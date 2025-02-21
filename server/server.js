@@ -1,12 +1,19 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-require('dotenv').config();
+const { createTables } = require('./db/schema');
+const { errorHandler } = require('./middleware/errorHandler');
 
 const app = express();
 
 // Middleware
 app.use(cors());
 app.use(express.json());
+
+// Initialize database
+createTables()
+  .then(() => console.log('Database initialized'))
+  .catch(err => console.error('Database initialization failed:', err));
 
 // Config routes
 app.get('/api/config', (req, res) => {
@@ -29,7 +36,11 @@ app.post('/api/config', (req, res) => {
   });
 });
 
-const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+const port = process.env.PORT || 3001;
+
+// Error handling middleware (must be last)
+app.use(errorHandler);
+
+app.listen(port, () => {
+  console.log(`Server running on port ${port}`);
 });
