@@ -1,0 +1,38 @@
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import Navbar from './components/Navigation/Navbar';
+import Login from './components/Login/Login';
+import Dashboard from './components/Dashboard/Dashboard';
+import Config from './components/Config/Config';
+import { Box } from '@mui/material';
+
+const AppLayout = ({ children }) => (
+  <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+    <Navbar />
+    <Box component="main" sx={{ flexGrow: 1 }}>
+      {children}
+    </Box>
+  </Box>
+);
+
+function App() {
+  return (
+    <Router>
+      <Routes>
+        <Route path="/" element={<Login />} />
+        <Route path="/dashboard" element={
+          <AppLayout>
+            <Dashboard />
+          </AppLayout>
+        } />
+        <Route path="/config" element={
+          <AppLayout>
+            <Config />
+          </AppLayout>
+        } />
+      </Routes>
+    </Router>
+  );
+}
+
+export default App;
