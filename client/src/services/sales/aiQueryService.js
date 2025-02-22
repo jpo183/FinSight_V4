@@ -1,5 +1,7 @@
 import BaseQueryService from '../common/baseQueryService';
 
+const API_URL = process.env.REACT_APP_API_URL;
+
 class SalesAiQueryService extends BaseQueryService {
   /**
    * Analyze a sales-specific query
@@ -7,10 +9,34 @@ class SalesAiQueryService extends BaseQueryService {
    * @returns {Promise<Object>}
    */
   static async analyzeQuery(query) {
-    // Use base query functionality with sales domain
-    console.log('API URL:', process.env.REACT_APP_API_URL);
-    console.log('NODE_ENV:', process.env.NODE_ENV);
-    return super.analyzeQuery(query, 'sales');
+    console.log('[AiQueryService] Starting query analysis:', query);
+    console.log('[AiQueryService] Using API URL:', API_URL);
+
+    try {
+      const response = await fetch(`${API_URL}/sales/analyze`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ query })
+      });
+
+      console.log('[AiQueryService] Raw response:', response);
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('[AiQueryService] API error:', errorData);
+        throw new Error(errorData.error || 'Failed to analyze query');
+      }
+
+      const data = await response.json();
+      console.log('[AiQueryService] Processed response:', data);
+      return data;
+
+    } catch (error) {
+      console.error('[AiQueryService] Service error:', error);
+      throw error;
+    }
   }
 
   /**

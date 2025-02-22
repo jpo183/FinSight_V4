@@ -97,6 +97,18 @@ const port = process.env.PORT || 3001;
 // Error handling middleware (must be last)
 app.use(errorHandler);
 
+// Test database connection on startup
+pool.query('SELECT NOW()', (err, res) => {
+  if (err) {
+    console.error('❌ Database connection failed:', err);
+  } else {
+    console.log('✅ Database connected:', res.rows[0]);
+  }
+});
+
 app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
+  console.log(`[Server] Environment: ${process.env.NODE_ENV}`);
+  console.log(`[Server] Running on port ${port}`);
+  console.log(`[Server] CORS enabled for: ${corsOptions.origin}`);
+  console.log(`[Server] Database URL: ${process.env.DB_CONNECTION_STRING?.replace(/:[^:@]*@/, ':****@')}`);
 });

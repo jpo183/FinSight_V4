@@ -61,25 +61,30 @@ router.post('/analyze', async (req, res) => {
 
 // Update route handler to use both schema and prompts
 router.post('/sales/analyze', async (req, res) => {
+  console.log('[aiQuery] Received request:', req.body);
+  
   try {
     const { query } = req.body;
     
     if (!query) {
+      console.log('[aiQuery] No query provided');
       return res.status(400).json({ 
         error: 'Query is required' 
       });
     }
 
+    console.log('[aiQuery] Processing query:', query);
     const result = await BaseQueryService.processQuery(query, {
       domain: 'sales',
       schema: SalesSchema,
       prompts: SalesPrompts
     });
 
+    console.log('[aiQuery] Query processed successfully:', result);
     res.json(result);
 
   } catch (error) {
-    console.error('Error processing AI query:', error);
+    console.error('[aiQuery] Error processing query:', error);
     res.status(500).json({ 
       error: 'Error processing query',
       details: error.message 
