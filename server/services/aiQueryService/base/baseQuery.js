@@ -153,17 +153,21 @@ class BaseQueryService {
     
     // Replace exact matches with ILIKE for all name fields
     nameFields.forEach(field => {
-      const pattern = new RegExp(`(?:\\w+\\.)?${field}\\s*=\s*'([^']+)'`, 'gi');
+      // More flexible pattern matching for various space formats
+      const pattern = new RegExp(`(\\w+\\.)?${field}\\s*=\\s*['"]([^'"]+)['"]`, 'gi');
       
-      // Use word boundary for partial name matching
-      response.sql = response.sql.replace(pattern, (match, value) => 
-        `${field} ILIKE '%${value.toLowerCase()}%'`
-      );
+      response.sql = response.sql.replace(pattern, (match, tableAlias, value) => {
+        const fieldRef = tableAlias ? `${tableAlias}${field}` : field;
+        console.log(`Replacing ${match} with ILIKE pattern`);
+        return `${fieldRef} ILIKE '%${value.toLowerCase()}%'`;
+      });
     });
 
-    // Log the transformation
-    console.log('Original query:', query);
-    console.log('Transformed SQL:', response.sql);
+    // Debug logging
+    console.log('Pattern matching debug:');
+    console.log('Original SQL:', response.sql);
+    console.log('Name fields:', nameFields);
+    console.log('Final SQL:', response.sql);
     
     return response;
   }
