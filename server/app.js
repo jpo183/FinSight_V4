@@ -6,7 +6,7 @@ const aiQueryRouter = require('./routes/aiQuery');
 // CORS Configuration
 const corsOptions = {
   origin: process.env.NODE_ENV === 'production' 
-    ? 'https://your-production-domain.com' 
+    ? ['https://finsight-v4.onrender.com', 'http://localhost:3000']  // Add your frontend Render URL
     : 'http://localhost:3000',
   methods: ['GET', 'POST'],
   allowedHeaders: ['Content-Type', 'Authorization'],
