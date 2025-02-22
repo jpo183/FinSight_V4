@@ -19,39 +19,57 @@ const hubspotApi = axios.create({
 async function fetchDealsWithCompanies() {
   try {
     console.log('Fetching deals from HubSpot...');
-    const searchCriteria = {
-      filterGroups: [{
-        filters: [{
-          propertyName: 'createdate',
-          operator: 'GTE',
-          value: '2024-01-01T00:00:00.000Z'
-        }]
-      }],
-      properties: [
-        'dealname',
-        'amount',
-        'dealstage',
-        'createdate',
-        'closedate',
-        'pipeline',
-        'hs_lastmodifieddate',
-        'hubspot_owner_id',
-        'hs_deal_stage_probability',
-        'hs_acv',
-        'hs_arr',
-        'hs_mrr'
-      ],
-      limit: 5  // Just get 5 deals for testing
-    };
-
-    console.log('Making API request to HubSpot...');
-    const response = await hubspotApi.post('/objects/deals/search', searchCriteria);
-    const deals = response.data.results;
-    console.log(`Found ${deals.length} deals`);
+    let after = undefined;
+    let allDeals = [];
+    
+    while (true) {
+      console.log(`Making API request with after: ${after || 'initial'}`);
+      
+      const searchCriteria = {
+        filterGroups: [{
+          filters: [{
+            propertyName: 'createdate',
+            operator: 'GTE',
+            value: '2024-01-01T00:00:00.000Z'
+          }]
+        }],
+        properties: [
+          'dealname',
+          'amount',
+          'dealstage',
+          'createdate',
+          'closedate',
+          'pipeline',
+          'hs_lastmodifieddate',
+          'hubspot_owner_id',
+          'hs_deal_stage_probability',
+          'hs_acv',
+          'hs_arr',
+          'hs_mrr'
+        ],
+        limit: 100,
+        ...(after ? { after } : {})
+      };
+      
+      const response = await hubspotApi.post('/objects/deals/search', searchCriteria);
+      const deals = response.data.results;
+      
+      if (deals.length === 0) break;
+      
+      allDeals.push(...deals);
+      after = response.data.paging?.next?.after;
+      
+      console.log(`Fetched ${allDeals.length} deals so far...`);
+      console.log(`Next page token: ${after || 'none'}`);
+      
+      if (!after) break;
+      
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
 
     // Get associated company IDs directly from the deal
     const companyIds = new Set();
-    for (const deal of deals) {
+    for (const deal of allDeals) {
       console.log(`Fetching associations for deal: ${deal.properties.dealname}`);
       
       // Create a new axios instance for v4 API calls
@@ -82,7 +100,7 @@ async function fetchDealsWithCompanies() {
 
     // After fetching deals, collect unique owner IDs
     const ownerIds = new Set();
-    deals.forEach(deal => {
+    allDeals.forEach(deal => {
       if (deal.properties.hubspot_owner_id) {
         ownerIds.add(deal.properties.hubspot_owner_id);
       }
@@ -92,7 +110,7 @@ async function fetchDealsWithCompanies() {
     const owners = await fetchOwnerDetails(Array.from(ownerIds));
 
     return {
-      deals,
+      deals: allDeals,
       companies,
       owners
     };
