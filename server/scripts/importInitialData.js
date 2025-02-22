@@ -190,9 +190,9 @@ async function saveToDatabase(deals, companies, owners) {
           last_modified_date = EXCLUDED.last_modified_date
       `, [
         owner.id,
-        owner.name,
+        `${owner.firstName} ${owner.lastName}`.trim(),
         owner.email,
-        owner.team,
+        owner.teams?.[0]?.name || null,
         owner.createdAt,
         owner.updatedAt
       ]);
