@@ -98,6 +98,12 @@ class BaseQueryService {
       
       And these relevant query patterns: ${JSON.stringify(matchingPrompts, null, 2)}
       
+ 
+      And these name search rules:
+      - Always use ILIKE with wildcards (%name%) for name searches
+      - Never use exact matches (=) for names
+      - Example: owner_name ILIKE '%Shannon%' instead of owner_name = 'Shannon'
+
       Generate a SQL query to answer: "${query}"
       
       The query appears to be a ${queryType} type query.
