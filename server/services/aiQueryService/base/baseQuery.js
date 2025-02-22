@@ -144,6 +144,9 @@ class BaseQueryService {
 
     const response = JSON.parse(completion.choices[0].message.content);
     
+    console.log('🔍 Starting SQL transformation');
+    console.log('📝 Original SQL:', response.sql);
+    
     // Define name fields that should use ILIKE
     const nameFields = [
       'owner_name',
@@ -152,25 +155,25 @@ class BaseQueryService {
     ];
     
     nameFields.forEach(field => {
-      // Pattern: optionally capture table alias (e.g., "owners.") then the field, then =, then the quoted value
       const pattern = new RegExp(`((?:\\w+\\.)?)${field}\\s*=\\s*'([^']+)'`, 'gi');
       
+      console.log(`\n🔎 Checking for ${field} matches...`);
+      
       response.sql = response.sql.replace(pattern, (match, alias, value) => {
-        console.log(`Processing name match: "${match}" with value: "${value}"`);
+        console.log(`✨ Found match: "${match}"`);
+        console.log(`📌 Table alias: "${alias || 'none'}"`);
+        console.log(`📌 Search value: "${value}"`);
         
-        // Split the value into search terms (in case there are multiple words)
         const searchTerms = value.toLowerCase().trim().split(/\s+/);
-        
-        // Build an ILIKE condition for each search term, preserving the alias if available
         const conditions = searchTerms.map(term => `${alias}${field} ILIKE '%${term}%'`);
         
         const result = `(${conditions.join(' OR ')})`;
-        console.log(`Transformed to: ${result}`);
+        console.log(`🔄 Transformed to: ${result}`);
         return result;
       });
     });
 
-    console.log('Final SQL:', response.sql);
+    console.log('\n📝 Final SQL:', response.sql);
     return response;
   }
 
