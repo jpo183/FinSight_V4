@@ -2,9 +2,8 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const { createTables } = require('./db/schema');
-const { errorHandler } = require('./middleware/errorHandler');
+const { errorHandler, APIError } = require('./middleware/errorHandler');
 const { pool } = require('./db/index');
-const { APIError } = require('./middleware/APIError');
 
 const app = express();
 
