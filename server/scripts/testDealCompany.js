@@ -63,6 +63,14 @@ async function testDealCompanyRelationship() {
       client.release();
     }
 
+    // 6. Fix the relationship
+    console.log('\n5. Fixing Deal-Company Relationship:');
+    const updateQuery = await client.query(
+      'UPDATE deals SET company_id = $1 WHERE deal_id = $2 RETURNING *',
+      [TEST_COMPANY_ID, TEST_DEAL_ID]
+    );
+    console.log('\nUpdated Deal:', updateQuery.rows[0]);
+
   } catch (error) {
     console.error('Error in test:', error);
     if (error.response) {
