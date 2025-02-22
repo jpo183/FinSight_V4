@@ -93,6 +93,8 @@ class BaseQueryService {
    * @private
    */
   static async generateSQL(query, { domain, schema, queryType, matchingPrompts }) {
+    console.log('💫 generateSQL started');
+    
     const prompt = `
       Given this database schema: ${JSON.stringify(schema, null, 2)}
       
@@ -126,6 +128,7 @@ class BaseQueryService {
       }
     `;
 
+    console.log('🤖 Calling OpenAI');
     const completion = await openai.chat.completions.create({
       model: "gpt-4",
       messages: [
@@ -142,6 +145,7 @@ class BaseQueryService {
       ]
     });
 
+    console.log('📥 Received OpenAI response');
     const response = JSON.parse(completion.choices[0].message.content);
     
     console.log('🔍 Starting SQL transformation');
@@ -155,9 +159,12 @@ class BaseQueryService {
     ];
     
     nameFields.forEach(field => {
+      console.log(`\n🔎 Processing field: ${field}`);
       const pattern = new RegExp(`((?:\\w+\\.)?)${field}\\s*=\\s*'([^']+)'`, 'gi');
       
-      console.log(`\n🔎 Checking for ${field} matches...`);
+      // Test if pattern matches before replacement
+      const matches = response.sql.match(pattern);
+      console.log('🔍 Pattern matches:', matches);
       
       response.sql = response.sql.replace(pattern, (match, alias, value) => {
         console.log(`✨ Found match: "${match}"`);
