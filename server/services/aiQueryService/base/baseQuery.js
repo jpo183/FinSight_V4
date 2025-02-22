@@ -144,26 +144,25 @@ class BaseQueryService {
 
     const response = JSON.parse(completion.choices[0].message.content);
     
-    // Define name fields that should use contains
+    // Define name fields that should use ILIKE
     const nameFields = [
       'owner_name',
       'contact_name',
       'company_name',
     ];
     
-    // Replace exact matches with contains (ILIKE)
     nameFields.forEach(field => {
-      // More flexible pattern to catch various SQL formats
-      const pattern = new RegExp(`owners\.${field} = '([^']+)'`, 'gi');
+      // Pattern: optionally capture table alias (e.g., "owners.") then the field, then =, then the quoted value
+      const pattern = new RegExp(`((?:\\w+\\.)?)${field}\\s*=\\s*'([^']+)'`, 'gi');
       
-      response.sql = response.sql.replace(pattern, (match, value) => {
+      response.sql = response.sql.replace(pattern, (match, alias, value) => {
         console.log(`Processing name match: "${match}" with value: "${value}"`);
         
-        // Split search terms and create ILIKE conditions
+        // Split the value into search terms (in case there are multiple words)
         const searchTerms = value.toLowerCase().trim().split(/\s+/);
-        const conditions = searchTerms.map(term => 
-          `${field} ILIKE '%${term}%'`
-        );
+        
+        // Build an ILIKE condition for each search term, preserving the alias if available
+        const conditions = searchTerms.map(term => `${alias}${field} ILIKE '%${term}%'`);
         
         const result = `(${conditions.join(' OR ')})`;
         console.log(`Transformed to: ${result}`);
