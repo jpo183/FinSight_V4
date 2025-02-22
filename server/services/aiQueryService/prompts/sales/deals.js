@@ -10,7 +10,7 @@ const SALES_PROMPTS = {
       sqlPattern: {
         basic: 'SELECT SUM(amount) FROM deals WHERE is_closed = false',
         withQuarter: 'SELECT SUM(amount) FROM deals WHERE is_closed = false AND fiscal_quarter = :quarter AND fiscal_year = :year',
-        byOwner: 'SELECT SUM(amount) FROM deals d JOIN owners o ON d.owner_id = o.owner_id WHERE is_closed = false AND o.owner_name LIKE :owner_name'
+        byOwner: 'SELECT SUM(amount) FROM deals d JOIN owners o ON d.owner_id = o.owner_id WHERE is_closed = false AND o.owner_name ILIKE :owner_name'
       },
       parameters: {
         quarter: 'Fiscal quarter (e.g., "Q1", "Q2")',
@@ -38,6 +38,20 @@ const SALES_PROMPTS = {
     }
   },
 
+  terminology: {
+    ownerMappings: [
+      { terms: ['rep', 'reps'], table: 'owners' },
+      { terms: ['sales rep', 'sales reps'], table: 'owners' },
+      { terms: ['representative', 'representatives'], table: 'owners' }
+    ],
+    nameSearchRules: [
+      'Use ILIKE for case-insensitive partial matches',
+      'Consider both full names and parts of names',
+      'Handle first name only searches',
+      'Use OR conditions to check multiple name parts'
+    ]
+  },
+
   queryPatterns: {
     timeBased: {
       description: 'Queries involving time periods',
@@ -51,7 +65,10 @@ const SALES_PROMPTS = {
       description: 'Queries involving owners/users',
       examples: [
         'Show deals owned by John',
-        'Which sales reps have the most deals?'
+        'Which sales reps have the most deals?',
+        'Show me all reps and their total pipeline',
+        'What\'s the average deal size per rep?',
+        'Show me deals for rep Shannon'
       ],
       userColumns: ['owner_id', 'owner_name']
     },
