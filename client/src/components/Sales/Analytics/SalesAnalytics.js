@@ -7,11 +7,15 @@ import {
   Paper,
   CircularProgress,
   Alert,
-  Divider
+  Divider,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails
 } from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
 import SalesAiQueryService from '../../../services/sales/aiQueryService';
 import ResultsTable from '../../Common/DataTable/ResultsTable';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 
 const SalesAnalytics = () => {
   const [query, setQuery] = useState('');
@@ -158,21 +162,6 @@ const SalesAnalytics = () => {
           </Typography>
           <Divider sx={{ mb: 2 }} />
           
-          {/* SQL Query */}
-          <Typography variant="subtitle2" color="text.secondary">
-            Generated SQL:
-          </Typography>
-          <Paper 
-            sx={{ 
-              p: 2, 
-              mb: 2, 
-              bgcolor: 'grey.100',
-              fontFamily: 'monospace'
-            }}
-          >
-            {result.sql}
-          </Paper>
-
           {/* Explanation */}
           <Typography variant="subtitle2" color="text.secondary">
             Explanation:
@@ -192,6 +181,32 @@ const SalesAnalytics = () => {
               description: result.explanation
             }}
           />
+
+          {/* Debug Section - Moved to bottom */}
+          <Box sx={{ mt: 3 }}>
+            <Accordion>
+              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                <Typography variant="caption" color="text.secondary">
+                  Debug Information
+                </Typography>
+              </AccordionSummary>
+              <AccordionDetails>
+                <Typography variant="caption" color="text.secondary">
+                  Generated SQL:
+                </Typography>
+                <Paper 
+                  sx={{ 
+                    p: 1, 
+                    bgcolor: 'grey.100',
+                    fontFamily: 'monospace',
+                    fontSize: '0.75rem'
+                  }}
+                >
+                  {result.sql}
+                </Paper>
+              </AccordionDetails>
+            </Accordion>
+          </Box>
         </Paper>
       )}
     </Box>
