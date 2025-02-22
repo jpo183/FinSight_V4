@@ -1,10 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const { openai } = require('../lib/openai');
+const { pool } = require('../db');
 const BaseQueryService = require('../services/aiQueryService/base/baseQuery');
 const SalesSchema = require('../services/aiQueryService/schemas/sales/tables');
 const SalesPrompts = require('../services/aiQueryService/prompts/sales/deals');
-const { pool } = require('../config/database');
 
 // POST endpoint for AI queries
 router.post('/analyze', async (req, res) => {
