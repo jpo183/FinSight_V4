@@ -144,31 +144,32 @@ class BaseQueryService {
 
     const response = JSON.parse(completion.choices[0].message.content);
     
-    // Define name fields that should use ILIKE
+    // Define name fields that should use contains
     const nameFields = [
       'owner_name',
       'contact_name',
       'company_name',
     ];
     
-    // Replace exact matches with ILIKE for all name fields
+    // Replace exact matches with contains (ILIKE)
     nameFields.forEach(field => {
-      // More flexible pattern matching for various space formats
       const pattern = new RegExp(`(\\w+\\.)?${field}\\s*=\\s*['"]([^'"]+)['"]`, 'gi');
       
       response.sql = response.sql.replace(pattern, (match, tableAlias, value) => {
-        const fieldRef = tableAlias ? `${tableAlias}${field}` : field;
-        console.log(`Replacing ${match} with ILIKE pattern`);
-        return `${fieldRef} ILIKE '%${value.toLowerCase()}%'`;
+        const fieldRef = tableAlias ? `${tableAlias}.${field}` : field;
+        console.log(`Adding contains matching for: ${match}`);
+        
+        // Split search term into words for multiple contains
+        const searchTerms = value.toLowerCase().split(/\s+/);
+        const conditions = searchTerms.map(term => 
+          `${fieldRef} ILIKE '%${term}%'`
+        );
+        
+        return `(${conditions.join(' OR ')})`;
       });
     });
 
-    // Debug logging
-    console.log('Pattern matching debug:');
-    console.log('Original SQL:', response.sql);
-    console.log('Name fields:', nameFields);
-    console.log('Final SQL:', response.sql);
-    
+    console.log('Transformed SQL:', response.sql);
     return response;
   }
 
