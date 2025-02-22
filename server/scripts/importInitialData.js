@@ -14,7 +14,22 @@ const hubspotApi = axios.create({
   }
 });
 
-// ... previous imports ...
+const RATE_LIMIT_DELAY = 10000; // 10 seconds
+
+async function makeRateLimitedRequest(requestFn) {
+  while (true) {
+    try {
+      return await requestFn();
+    } catch (error) {
+      if (error.response?.status === 429) {
+        console.log('Rate limit hit, waiting 10 seconds...');
+        await new Promise(resolve => setTimeout(resolve, RATE_LIMIT_DELAY));
+        continue;
+      }
+      throw error;
+    }
+  }
+}
 
 async function fetchDealsWithCompanies() {
   try {
@@ -125,32 +140,37 @@ async function fetchCompanyDetails(companyIds) {
     console.log('Fetching company details...');
     const companies = [];
     
-    // Batch requests in groups of 10 to avoid rate limits
-    for (let i = 0; i < companyIds.length; i += 10) {
-      const batch = companyIds.slice(i, i + 10);
-      console.log(`Fetching batch of ${batch.length} companies...`);
+    // Batch requests in smaller groups
+    for (let i = 0; i < companyIds.length; i += 5) {
+      const batch = companyIds.slice(i, i + 5);
+      console.log(`Fetching batch ${i/5 + 1} of ${Math.ceil(companyIds.length/5)} (${batch.length} companies)...`);
       
       const promises = batch.map(id => 
-        hubspotApi.get(`/objects/companies/${id}`, {
-          params: {
-            properties: [
-              'name',
-              'industry',
-              'type',
-              'annualrevenue',
-              'total_revenue',
-              'city',
-              'state',
-              'country',
-              'createdate',
-              'hs_lastmodifieddate'
-            ]
-          }
-        })
+        makeRateLimitedRequest(() => 
+          hubspotApi.get(`/objects/companies/${id}`, {
+            params: {
+              properties: [
+                'name',
+                'industry',
+                'type',
+                'annualrevenue',
+                'total_revenue',
+                'city',
+                'state',
+                'country',
+                'createdate',
+                'hs_lastmodifieddate'
+              ]
+            }
+          })
+        )
       );
       
       const responses = await Promise.all(promises);
       companies.push(...responses.map(r => r.data));
+      
+      // Add a delay between batches
+      await new Promise(resolve => setTimeout(resolve, 1000));
     }
 
     console.log(`Successfully fetched ${companies.length} companies`);
