@@ -107,6 +107,7 @@ async function fetchDealsWithCompanies() {
         
         if (associatedCompanies.length > 0) {
           deal.companyId = associatedCompanies[0].toObjectId;
+          console.log(`DEBUG: Deal ${deal.id} (${deal.properties.dealname}) associated with company: ${deal.companyId}`);
           dealsWithCompanies++;
           associatedCompanies.forEach(company => {
             companyIds.add(company.toObjectId);
@@ -370,6 +371,7 @@ async function saveToDatabase(deals, companies, owners) {
     // Then deals
     console.log('\n=== Processing Deals ===');
     for (const deal of deals) {
+      console.log(`\nDEBUG: About to save deal ${deal.id} with company: ${deal.companyId}`);
       const dealData = {
         id: deal.id,
         company_id: deal.companyId || null,
@@ -390,7 +392,11 @@ async function saveToDatabase(deals, companies, owners) {
         fiscal_quarter: `Q${Math.ceil(new Date(deal.properties.closedate).getMonth() / 3)}`,
         fiscal_year: new Date(deal.properties.closedate).getFullYear()
       };
-      console.log('\nDeal data to insert:', JSON.stringify(dealData, null, 2));
+      console.log('\nDEBUG: Deal data to insert:', JSON.stringify({
+        id: dealData.id,
+        company_id: dealData.company_id,
+        name: dealData.name
+      }, null, 2));
       
       await client.query(`
         INSERT INTO deals (
