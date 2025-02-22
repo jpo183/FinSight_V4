@@ -1,5 +1,8 @@
 import BaseQueryService from '../common/baseQueryService';
 
+console.log('[AiQueryService] Environment:', process.env.NODE_ENV);
+console.log('[AiQueryService] Raw API URL:', process.env.REACT_APP_API_URL);
+
 const API_URL = process.env.REACT_APP_API_URL;
 
 class SalesAiQueryService extends BaseQueryService {
