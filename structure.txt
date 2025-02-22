@@ -1,0 +1,128 @@
+# AI Query Service Documentation
+
+## Directory Structure
+server/services/aiQueryService/
+  ├── index.js                 # Central exports for all services
+  ├── base/
+  │   └── baseQuery.js         # Core query processing & execution
+  ├── schemas/                 # Database structure definitions
+  │   └── sales/
+  │       └── tables.js        # Sales tables schema
+  └── prompts/                 # AI prompt templates
+      └── sales/
+          └── deals.js         # Sales query patterns & examples
+
+## Component Responsibilities
+
+### Base Query Service (baseQuery.js)
+- Query processing pipeline
+- SQL generation via OpenAI
+- Query type detection
+- SQL validation and security
+- Database interaction
+- Error handling
+
+### Schema Files (schemas/*/tables.js)
+- Table definitions
+- Column specifications
+- Relationships between tables
+- Data types and constraints
+- Primary/Foreign key definitions
+
+### Prompt Files (prompts/*/deals.js)
+- Common query patterns
+- Example queries
+- SQL templates
+- Query parameters
+- Domain-specific patterns
+
+## Adding New Domains
+
+### 1. Schema Creation
+Location: `schemas/<domain>/tables.js`
+
+### 2. Prompt Creation
+Location: `prompts/<domain>/queries.js`
+
+### 3. Route Integration
+Location: `routes/aiQuery.js`
+
+## Query Types
+1. timeBased - Time period analysis
+2. userBased - User/owner related queries
+3. statusBased - Status/state queries
+4. metrics - Numerical/statistical analysis
+5. comparison - Comparative analysis
+6. trend - Time series analysis
+
+## Security Considerations
+1. SQL Injection Prevention
+   - Pattern validation
+   - Parameter sanitization
+   - Query structure validation
+
+2. Access Control
+   - Domain-specific restrictions
+   - Table access validation
+   - Column level security
+
+3. Query Validation
+   - Table name validation
+   - Column existence checks
+   - Relationship validation
+
+## Testing Strategy
+1. Schema Validation
+   - Table structure tests
+   - Relationship tests
+   - Constraint tests
+
+2. Query Processing
+   - Pattern matching tests
+   - SQL generation tests
+   - Error handling tests
+
+3. Integration Tests
+   - End-to-end query tests
+   - Security validation tests
+   - Performance tests
+
+## Checklist for New Domains
+
+### Schema Setup
+[ ] Create domain schema folder
+[ ] Define tables and relationships
+[ ] Document table structure
+[ ] Add data constraints
+
+### Prompt Setup
+[ ] Create domain prompts folder
+[ ] Define common queries
+[ ] Add query patterns
+[ ] Create example queries
+
+### Integration
+[ ] Update index.js exports
+[ ] Create domain routes
+[ ] Add error handling
+[ ] Implement security checks
+
+### Testing
+[ ] Schema validation tests
+[ ] Prompt validation tests
+[ ] Integration tests
+[ ] Security tests
+
+### Documentation
+[ ] Update schema docs
+[ ] Document query patterns
+[ ] Add usage examples
+[ ] Update API docs
+
+## Example Usage
+
+## Maintenance Notes
+- Keep schemas and prompts separate
+- Update patterns based on usage
+- Monitor query performance
+- Regular security reviews
