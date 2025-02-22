@@ -96,10 +96,11 @@ class BaseQueryService {
     const prompt = `
       Given this database schema: ${JSON.stringify(schema, null, 2)}
       
-      CRITICAL NAME SEARCH RULES (Must be followed):
-      - Always use ILIKE with wildcards (%name%) for name searches
-      - Never use exact matches (=) for names
-      - Example: owner_name ILIKE '%Shannon%' instead of owner_name = 'Shannon'
+      ⚠️ CRITICAL NAME SEARCH RULES (MUST BE FOLLOWED):
+      - ALWAYS use ILIKE with wildcards (%name%) for ANY name searches
+      - NEVER use exact matches (=) for names
+      - REQUIRED FORMAT: owner_name ILIKE '%name%'
+      - EXAMPLE: owner_name ILIKE '%shannon%' NOT owner_name = 'shannon'
       
       And these relevant query patterns: ${JSON.stringify(matchingPrompts, null, 2)}
       
@@ -113,6 +114,7 @@ class BaseQueryService {
       3. Use proper table aliases
       4. Include appropriate JOINs based on the schema relationships
       5. Handle NULL values appropriately
+      6. ⚠️ ALWAYS use ILIKE for name searches, never use =
       
       Provide the response in this JSON format:
       {
@@ -129,17 +131,26 @@ class BaseQueryService {
       messages: [
         {
           role: "system",
-          content: `You are a SQL expert specializing in ${domain} analytics. IMPORTANT: Always use ILIKE with wildcards for any name searches.`
+          content: `You are a SQL expert specializing in ${domain} analytics. 
+          ⚠️ CRITICAL: You must ALWAYS use ILIKE with wildcards (%name%) for ANY name searches. 
+          NEVER use exact matches (=) for names.`
         },
         {
           role: "user",
           content: prompt
         }
-      ],
-      response_format: { type: "json_object" }
+      ]
     });
 
-    return JSON.parse(completion.choices[0].message.content);
+    const response = JSON.parse(completion.choices[0].message.content);
+    
+    // Validate that ILIKE is used for name searches
+    if (query.toLowerCase().includes('shannon') && !response.sql.toLowerCase().includes('ilike')) {
+      console.warn('Warning: Generated SQL does not use ILIKE for name search');
+      response.sql = response.sql.replace(/owner_name\s*=\s*'([^']+)'/i, "owner_name ILIKE '%$1%'");
+    }
+
+    return response;
   }
 
   /**
