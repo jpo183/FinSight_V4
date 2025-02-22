@@ -149,15 +149,22 @@ class BaseQueryService {
       'owner_name',
       'contact_name',
       'company_name',
-      // Add more as needed
     ];
     
     // Replace exact matches with ILIKE for all name fields
     nameFields.forEach(field => {
-      const pattern = new RegExp(`(?:\\w+\\.)?${field}\\s*=\\s*'([^']+)'`, 'gi');
-      response.sql = response.sql.replace(pattern, `${field} ILIKE '%$1%'`);
+      const pattern = new RegExp(`(?:\\w+\\.)?${field}\\s*=\s*'([^']+)'`, 'gi');
+      
+      // Use word boundary for partial name matching
+      response.sql = response.sql.replace(pattern, (match, value) => 
+        `${field} ILIKE '%${value.toLowerCase()}%'`
+      );
     });
 
+    // Log the transformation
+    console.log('Original query:', query);
+    console.log('Transformed SQL:', response.sql);
+    
     return response;
   }
 
