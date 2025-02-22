@@ -8,6 +8,8 @@ class SalesAiQueryService extends BaseQueryService {
    */
   static async analyzeQuery(query) {
     // Use base query functionality with sales domain
+    console.log('API URL:', process.env.REACT_APP_API_URL);
+    console.log('NODE_ENV:', process.env.NODE_ENV);
     return super.analyzeQuery(query, 'sales');
   }
 
