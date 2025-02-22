@@ -51,6 +51,47 @@ app.get('/api/test-db', async (req, res, next) => {
   }
 });
 
+// Test tables existence and structure
+app.get('/api/test-tables', async (req, res, next) => {
+  try {
+    // Check both tables
+    const tableCheck = await pool.query(`
+      SELECT 
+        table_name, 
+        column_name, 
+        data_type
+      FROM information_schema.columns
+      WHERE table_name IN ('deals', 'companies')
+      ORDER BY table_name, ordinal_position;
+    `);
+
+    // Check if we got any results
+    if (tableCheck.rows.length === 0) {
+      throw new APIError('Tables not found', 404);
+    }
+
+    // Organize results by table
+    const tables = tableCheck.rows.reduce((acc, row) => {
+      if (!acc[row.table_name]) {
+        acc[row.table_name] = [];
+      }
+      acc[row.table_name].push({
+        column: row.column_name,
+        type: row.data_type
+      });
+      return acc;
+    }, {});
+
+    res.json({
+      message: 'Tables exist',
+      tables: tables,
+      status: 'success'
+    });
+  } catch (error) {
+    next(new APIError('Error checking tables: ' + error.message, 500));
+  }
+});
+
 const port = process.env.PORT || 3001;
 
 // Error handling middleware (must be last)
