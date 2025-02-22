@@ -3,10 +3,10 @@ const express = require('express');
 const cors = require('cors');
 const { createTables } = require('./db/schema');
 const { errorHandler, APIError } = require('./middleware/errorHandler');
-const { pool } = require('./db/index');
-const { app, corsOptions } = require('./app');  // Import both
+const { pool } = require('./config/database');
+const { app, corsOptions } = require('./app');  // Import app instead of creating new one
 
-const app = express();
+const PORT = process.env.PORT || 3001;
 
 // Middleware
 app.use(cors());
@@ -92,8 +92,6 @@ app.get('/api/test-tables', async (req, res, next) => {
     next(new APIError('Error checking tables: ' + error.message, 500));
   }
 });
-
-const PORT = process.env.PORT || 3001;
 
 // Error handling middleware (must be last)
 app.use(errorHandler);
