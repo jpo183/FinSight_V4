@@ -3,7 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const { createTables } = require('./db/schema');
 const { errorHandler, APIError } = require('./middleware/errorHandler');
-const { pool } = require('./config/database');
+const { pool } = require('./db');  // Updated path to database module
 const { app, corsOptions } = require('./app');  // Import app instead of creating new one
 
 const PORT = process.env.PORT || 3001;
