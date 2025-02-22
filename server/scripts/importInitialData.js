@@ -189,14 +189,19 @@ async function fetchOwnerDetails(ownerIds) {
     // Batch requests in groups of 10 to avoid rate limits
     for (let i = 0; i < ownerIds.length; i += 10) {
       const batch = ownerIds.slice(i, i + 10);
-      console.log(`Fetching batch of ${batch.length} owners...`);
+      console.log(`Fetching batch ${i/10 + 1} of ${Math.ceil(ownerIds.length/10)} (${batch.length} owners)...`);
       
       const promises = batch.map(id => 
-        hubspotApi.get(`/owners/${id}`)
+        makeRateLimitedRequest(() => 
+          hubspotApi.get(`/owners/v2/owners/${id}`)
+        )
       );
       
       const responses = await Promise.all(promises);
       owners.push(...responses.map(r => r.data));
+      
+      // Add a delay between batches
+      await new Promise(resolve => setTimeout(resolve, 1000));
     }
 
     console.log(`Successfully fetched ${owners.length} owners`);
