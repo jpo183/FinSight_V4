@@ -102,8 +102,30 @@ async function fetchDealsWithCompanies() {
           }
         });
         
+        // Add specific logging for our test case
+        if (deal.id === '29118912099') {
+          console.log('\n=== TEST CASE DEAL FOUND ===');
+          console.log('Deal Properties:', JSON.stringify(deal.properties, null, 2));
+          console.log('Making association request...');
+        }
+        
         const associationsResponse = await v4Api.get(`/objects/deals/${deal.id}/associations/company`);
-        console.log('Association response:', JSON.stringify(associationsResponse.data, null, 2));
+        
+        // Detailed logging for our test case
+        if (deal.id === '29118912099') {
+          console.log('Association Response:', JSON.stringify(associationsResponse.data, null, 2));
+          console.log('Response Headers:', JSON.stringify(associationsResponse.headers, null, 2));
+          console.log('Response Status:', associationsResponse.status);
+          
+          // Make a direct company check
+          try {
+            const companyResponse = await hubspotApi.get(`/objects/companies/20268113298`);
+            console.log('\nDirect Company Check:');
+            console.log('Company exists in HubSpot:', JSON.stringify(companyResponse.data, null, 2));
+          } catch (companyError) {
+            console.error('Error fetching company directly:', companyError.message);
+          }
+        }
         
         const associatedCompanies = associationsResponse.data.results || [];
         console.log(`Found ${associatedCompanies.length} companies for deal: ${deal.properties.dealname}`);
@@ -116,6 +138,12 @@ async function fetchDealsWithCompanies() {
         } else {
           dealsWithoutCompanies++;
           console.log('⚠️ No companies found for this deal');
+          
+          // Additional logging for our test case
+          if (deal.id === '29118912099') {
+            console.log('⚠️ TEST CASE DEAL HAS NO COMPANIES IN RESPONSE');
+            console.log('Expected company ID 20268113298 not found in associations');
+          }
         }
       } catch (error) {
         failedAssociationFetches++;
@@ -225,7 +253,7 @@ async function fetchOwnerDetails(ownerIds) {
         return makeRateLimitedRequest(() => 
           hubspotApi.get(`/owners/${id}`, {
             params: {
-              archived: true  // Include inactive/archived owners
+              archived: true  // Verify this parameter is being sent
             }
           })
         );
@@ -237,6 +265,17 @@ async function fetchOwnerDetails(ownerIds) {
         
         const batchOwners = responses.map(r => r.data);
         console.log('Sample owner data:', JSON.stringify(batchOwners[0], null, 2));
+        
+        // Let's modify our logging in fetchOwnerDetails to verify the API call
+        const response = await hubspotApi.get(`/owners/${id}`, {
+          params: {
+            archived: true  // Verify this parameter is being sent
+          }
+        });
+        console.log(`Owner API Request URL: ${response.config.url}`);
+        console.log(`Owner API Request Params: ${JSON.stringify(response.config.params)}`);
+        console.log(`Owner Response Status: ${response.status}`);
+        console.log(`Owner Active Status: ${response.data.archived ? 'Inactive' : 'Active'}`);
         
         owners.push(...batchOwners);
       } catch (error) {
