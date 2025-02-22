@@ -144,11 +144,19 @@ class BaseQueryService {
 
     const response = JSON.parse(completion.choices[0].message.content);
     
-    // Validate that ILIKE is used for name searches
-    if (query.toLowerCase().includes('shannon') && !response.sql.toLowerCase().includes('ilike')) {
-      console.warn('Warning: Generated SQL does not use ILIKE for name search');
-      response.sql = response.sql.replace(/owner_name\s*=\s*'([^']+)'/i, "owner_name ILIKE '%$1%'");
-    }
+    // Define name fields that should use ILIKE
+    const nameFields = [
+      'owner_name',
+      'contact_name',
+      'company_name',
+      // Add more as needed
+    ];
+    
+    // Replace exact matches with ILIKE for all name fields
+    nameFields.forEach(field => {
+      const pattern = new RegExp(`(?:\\w+\\.)?${field}\\s*=\\s*'([^']+)'`, 'gi');
+      response.sql = response.sql.replace(pattern, `${field} ILIKE '%$1%'`);
+    });
 
     return response;
   }
