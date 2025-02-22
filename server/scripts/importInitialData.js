@@ -210,66 +210,45 @@ async function fetchOwnerDetails(ownerIds) {
   try {
     console.log('Fetching owner details...');
     console.log(`Total owners to fetch: ${ownerIds.length}`);
-    console.log('Owner IDs:', ownerIds);
     const owners = [];
     
     // Batch requests in groups of 10 to avoid rate limits
     for (let i = 0; i < ownerIds.length; i += 10) {
       const batch = ownerIds.slice(i, i + 10);
       console.log(`\nProcessing batch ${Math.floor(i/10) + 1} of ${Math.ceil(ownerIds.length/10)}`);
-      console.log(`Batch owner IDs:`, batch);
       
-      const promises = batch.map(id => {
-        console.log(`Creating request for owner ID: ${id}`);
-        return makeRateLimitedRequest(() => 
-          hubspotApi.get(`/owners/${id}`, {
-            params: {
-              archived: true  // Verify this parameter is being sent
-            }
-          })
-        );
-      });
+      const promises = batch.map(id => 
+        makeRateLimitedRequest(() => 
+          hubspotApi.get(`/owners/${id}`)
+        )
+      );
       
       try {
         const responses = await Promise.all(promises);
         console.log(`Successfully received ${responses.length} responses for current batch`);
         
         const batchOwners = responses.map(r => r.data);
-        console.log('Sample owner data:', JSON.stringify(batchOwners[0], null, 2));
+        owners.push(...batchOwners);
         
-        // Let's modify our logging in fetchOwnerDetails to verify the API call
-        const response = await hubspotApi.get(`/owners/${id}`, {
-          params: {
-            archived: true  // Verify this parameter is being sent
+        // Add debug logging for inactive owners
+        batchOwners.forEach(owner => {
+          if (owner.archived) {
+            console.log(`Found inactive owner: ${owner.id} - ${owner.firstName} ${owner.lastName}`);
           }
         });
-        console.log(`Owner API Request URL: ${response.config.url}`);
-        console.log(`Owner API Request Params: ${JSON.stringify(response.config.params)}`);
-        console.log(`Owner Response Status: ${response.status}`);
-        console.log(`Owner Active Status: ${response.data.archived ? 'Inactive' : 'Active'}`);
-        
-        owners.push(...batchOwners);
       } catch (error) {
         console.error(`\nError fetching batch of owners:`, error.message);
-        if (error.config?.url) {
-          console.error('Failed request URL:', error.config.url);
-          console.error('Failed owner ID:', error.config.url.split('/').pop());
-        }
-        if (error.response?.status) {
-          console.error('Response status:', error.response.status);
-          console.error('Response headers:', JSON.stringify(error.response.headers, null, 2));
-        }
         continue;
       }
       
-      console.log(`Waiting 1 second before next batch...`);
       await new Promise(resolve => setTimeout(resolve, 1000));
     }
 
     console.log(`\nFetch summary:`);
     console.log(`- Total owners requested: ${ownerIds.length}`);
     console.log(`- Successfully fetched: ${owners.length}`);
-    console.log(`- Failed: ${ownerIds.length - owners.length}`);
+    console.log(`- Active owners: ${owners.filter(o => !o.archived).length}`);
+    console.log(`- Inactive owners: ${owners.filter(o => o.archived).length}`);
     
     return owners;
   } catch (error) {
