@@ -246,8 +246,18 @@ async function saveToDatabase(deals, companies, owners) {
     await client.query('BEGIN');
 
     // First, insert owners
+    console.log('\n=== Processing Owners ===');
     for (const owner of owners) {
-      console.log('Saving owner:', owner.owner_email);
+      const ownerData = {
+        id: owner.id,
+        name: `${owner.firstName} ${owner.lastName}`.trim(),
+        email: owner.email,
+        team: owner.teams?.[0]?.name || null,
+        created: owner.createdAt,
+        modified: owner.updatedAt
+      };
+      console.log('\nOwner data to insert:', JSON.stringify(ownerData, null, 2));
+      
       await client.query(`
         INSERT INTO owners (
           owner_id, owner_name, owner_email, team,
@@ -259,18 +269,34 @@ async function saveToDatabase(deals, companies, owners) {
           team = EXCLUDED.team,
           last_modified_date = EXCLUDED.last_modified_date
       `, [
-        owner.owner_id,
-        owner.owner_name,
-        owner.owner_email,
-        owner.team,
-        owner.created_date,
-        owner.last_modified_date
+        ownerData.id,
+        ownerData.name,
+        ownerData.email,
+        ownerData.team,
+        ownerData.created,
+        ownerData.modified
       ]);
+      console.log(`✓ Saved owner: ${ownerData.email}`);
     }
 
     // Then companies
+    console.log('\n=== Processing Companies ===');
     for (const company of companies) {
-      console.log('Saving company:', company?.properties?.name);
+      const companyData = {
+        id: company.id,
+        name: company.properties.name,
+        industry: company.properties.industry || null,
+        type: company.properties.type || null,
+        annual_revenue: company.properties.annualrevenue || null,
+        total_revenue: company.properties.total_revenue || null,
+        created: company.properties.createdate,
+        modified: company.properties.hs_lastmodifieddate,
+        city: company.properties.city || null,
+        state: company.properties.state || null,
+        country: company.properties.country || null
+      };
+      console.log('\nCompany data to insert:', JSON.stringify(companyData, null, 2));
+      
       await client.query(`
         INSERT INTO companies (
           company_id, company_name, industry, type, 
@@ -288,24 +314,48 @@ async function saveToDatabase(deals, companies, owners) {
           state = EXCLUDED.state,
           country = EXCLUDED.country
       `, [
-        company.id,
-        company.properties.name,
-        company.properties.industry,
-        company.properties.type,
-        company.properties.annualrevenue,
-        company.properties.total_revenue,
-        company.properties.createdate,
-        company.properties.hs_lastmodifieddate,
-        company.properties.city,
-        company.properties.state,
-        company.properties.country
+        companyData.id,
+        companyData.name,
+        companyData.industry,
+        companyData.type,
+        companyData.annual_revenue,
+        companyData.total_revenue,
+        companyData.created,
+        companyData.modified,
+        companyData.city,
+        companyData.state,
+        companyData.country
       ]);
+      console.log(`✓ Saved company: ${companyData.name}`);
     }
 
-    // Then deals (now with just the owner_id reference)
+    // Then deals
+    console.log('\n=== Processing Deals ===');
     for (const deal of deals) {
-      console.log('Saving deal:', deal.properties.dealname);
       const companyId = deal.associations?.companies?.results[0]?.id;
+      const closeDate = new Date(deal.properties.closedate);
+      
+      const dealData = {
+        id: deal.id,
+        company_id: companyId,
+        name: deal.properties.dealname,
+        amount: deal.properties.amount || null,
+        create_date: deal.properties.createdate,
+        close_date: deal.properties.closedate,
+        modified_date: deal.properties.hs_lastmodifieddate,
+        stage: deal.properties.dealstage,
+        pipeline: deal.properties.pipeline,
+        probability: deal.properties.hs_deal_stage_probability || null,
+        acv: deal.properties.hs_acv || null,
+        arr: deal.properties.hs_arr || null,
+        mrr: deal.properties.hs_mrr || null,
+        owner_id: deal.properties.hubspot_owner_id,
+        is_closed: deal.properties.dealstage?.includes('closed'),
+        is_won: deal.properties.dealstage?.includes('won'),
+        fiscal_quarter: `Q${Math.ceil(closeDate.getMonth() / 3)}`,
+        fiscal_year: closeDate.getFullYear()
+      };
+      console.log('\nDeal data to insert:', JSON.stringify(dealData, null, 2));
       
       await client.query(`
         INSERT INTO deals (
@@ -330,32 +380,37 @@ async function saveToDatabase(deals, companies, owners) {
           is_closed = EXCLUDED.is_closed,
           is_won = EXCLUDED.is_won
       `, [
-        deal.id,
-        companyId,
-        deal.properties.dealname,
-        deal.properties.amount,
-        deal.properties.createdate,
-        deal.properties.closedate,
-        deal.properties.hs_lastmodifieddate,
-        deal.properties.dealstage,
-        deal.properties.pipeline,
-        deal.properties.hs_deal_stage_probability,
-        deal.properties.hs_acv,
-        deal.properties.hs_arr,
-        deal.properties.hs_mrr,
-        deal.properties.hubspot_owner_id,
-        deal.properties.dealstage?.includes('closed'),
-        deal.properties.dealstage?.includes('won'),
-        `Q${Math.ceil(new Date(deal.properties.closedate).getMonth() / 3)}`,
-        new Date(deal.properties.closedate).getFullYear()
+        dealData.id,
+        dealData.company_id,
+        dealData.name,
+        dealData.amount,
+        dealData.create_date,
+        dealData.close_date,
+        dealData.modified_date,
+        dealData.stage,
+        dealData.pipeline,
+        dealData.probability,
+        dealData.acv,
+        dealData.arr,
+        dealData.mrr,
+        dealData.owner_id,
+        dealData.is_closed,
+        dealData.is_won,
+        dealData.fiscal_quarter,
+        dealData.fiscal_year
       ]);
+      console.log(`✓ Saved deal: ${dealData.name}`);
     }
 
     await client.query('COMMIT');
+    console.log('\n=== Database Save Summary ===');
+    console.log(`✓ Saved ${owners.length} owners`);
+    console.log(`✓ Saved ${companies.length} companies`);
+    console.log(`✓ Saved ${deals.length} deals`);
     console.log('Database save completed successfully');
   } catch (error) {
     await client.query('ROLLBACK');
-    console.error('Error saving to database:', error);
+    console.error('\n❌ Error saving to database:', error);
     throw error;
   } finally {
     client.release();
