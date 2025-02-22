@@ -1,5 +1,6 @@
 const { openai } = require('../../../lib/openai');
-const { pool } = require('../../../config/database');
+const { pool } = require('../../../db');
+const { APIError } = require('../../../middleware/errorHandler');
 
 class BaseQueryService {
   /**
