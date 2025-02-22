@@ -2,11 +2,6 @@ require('dotenv').config();
 const axios = require('axios');
 const { pool } = require('../db/index');
 
-const TEST_OWNER_IDS = [
-  '368861769',  // Known inactive owner
-  '190929822'   // Known active owner
-];
-
 const hubspotApi = axios.create({
   baseURL: 'https://api.hubspot.com/crm/v3',
   headers: {
@@ -15,25 +10,12 @@ const hubspotApi = axios.create({
   }
 });
 
-async function testOwners() {
+async function importAllOwners() {
   try {
-    console.log('=== Starting Owner Test ===\n');
-
-    // First, check current database state
-    const client = await pool.connect();
-    try {
-      console.log('1. Checking current database state:');
-      const dbResult = await client.query(
-        'SELECT owner_id, owner_name, owner_email FROM owners WHERE owner_id = ANY($1)',
-        [TEST_OWNER_IDS]
-      );
-      console.log('Owners in database:', dbResult.rows);
-    } finally {
-      client.release();
-    }
+    console.log('=== Starting Owner Import ===\n');
 
     // Get active owners
-    console.log('\n2. Fetching active owners:');
+    console.log('1. Fetching active owners:');
     const activeResponse = await hubspotApi.get('/owners', {
       params: {
         limit: 100,
@@ -42,7 +24,7 @@ async function testOwners() {
     });
 
     // Get inactive owners
-    console.log('\n3. Fetching inactive owners:');
+    console.log('\n2. Fetching inactive owners:');
     const inactiveResponse = await hubspotApi.get('/owners', {
       params: {
         limit: 100,
@@ -56,27 +38,62 @@ async function testOwners() {
       ...inactiveResponse.data.results
     ];
 
-    // Filter for our test IDs
-    const foundOwners = allOwners.filter(owner => 
-      TEST_OWNER_IDS.includes(owner.id)
-    );
+    console.log(`\nTotal owners found: ${allOwners.length}`);
+    console.log(`Active: ${activeResponse.data.results.length}`);
+    console.log(`Inactive: ${inactiveResponse.data.results.length}`);
 
-    console.log('\nFound owners:', JSON.stringify(foundOwners, null, 2));
+    // Save to database
+    console.log('\n3. Saving owners to database:');
+    const client = await pool.connect();
     
-    // Summary
-    console.log('\nSummary:');
-    TEST_OWNER_IDS.forEach(id => {
-      const owner = foundOwners.find(o => o.id === id);
-      console.log(`Owner ${id}: ${owner ? 'Found' : 'Not found'}`);
-      if (owner) {
-        console.log(`- Name: ${owner.firstName} ${owner.lastName}`);
-        console.log(`- Email: ${owner.email}`);
-        console.log(`- Status: ${owner.archived ? 'Inactive' : 'Active'}`);
+    try {
+      await client.query('BEGIN');
+
+      for (const owner of allOwners) {
+        const ownerData = {
+          id: owner.id,
+          name: `${owner.firstName} ${owner.lastName}`.trim(),
+          email: owner.email,
+          team: owner.teams?.[0]?.name || null,
+          created: owner.createdAt,
+          modified: owner.updatedAt
+        };
+
+        await client.query(`
+          INSERT INTO owners (
+            owner_id, owner_name, owner_email, team,
+            created_date, last_modified_date
+          ) VALUES ($1, $2, $3, $4, $5, $6)
+          ON CONFLICT (owner_id) DO UPDATE SET
+            owner_name = EXCLUDED.owner_name,
+            owner_email = EXCLUDED.owner_email,
+            team = EXCLUDED.team,
+            last_modified_date = EXCLUDED.last_modified_date
+        `, [
+          ownerData.id,
+          ownerData.name,
+          ownerData.email,
+          ownerData.team,
+          ownerData.created,
+          ownerData.modified
+        ]);
+
+        console.log(`✓ Saved owner: ${ownerData.name} (${ownerData.id})`);
       }
-    });
+
+      await client.query('COMMIT');
+      console.log('\n=== Import Summary ===');
+      console.log(`Successfully imported ${allOwners.length} owners`);
+
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
 
   } catch (error) {
-    console.error('Test failed:', error);
+    console.error('Import failed:', error);
     if (error.response) {
       console.error('Response status:', error.response.status);
       console.error('Response data:', error.response.data);
@@ -86,6 +103,6 @@ async function testOwners() {
   }
 }
 
-// Run the test
-console.log('Starting owner test...');
-testOwners(); 
+// Run the import
+console.log('Starting owner import...');
+importAllOwners(); 
