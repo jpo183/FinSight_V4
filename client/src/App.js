@@ -5,6 +5,7 @@ import Login from './components/Login/Login';
 import Dashboard from './components/Dashboard/Dashboard';
 import Config from './components/Config/Config';
 import Sales from './components/Sales/Sales';
+import SalesAnalytics from './components/Sales/Analytics/SalesAnalytics';
 import { Box } from '@mui/material';
 
 const AppLayout = ({ children }) => (
@@ -29,6 +30,11 @@ function App() {
         <Route path="/sales" element={
           <AppLayout>
             <Sales />
+          </AppLayout>
+        } />
+        <Route path="/sales/analytics" element={
+          <AppLayout>
+            <SalesAnalytics />
           </AppLayout>
         } />
         <Route path="/config" element={

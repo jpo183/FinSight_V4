@@ -126,3 +126,56 @@ Location: `routes/aiQuery.js`
 - Update patterns based on usage
 - Monitor query performance
 - Regular security reviews
+
+## Common Components
+
+### Results Table (components/Common/DataTable/ResultsTable.js)
+- Reusable table component for query results
+- Automatic column detection
+- Data type formatting:
+  - Currency detection
+  - Number formatting
+  - Date formatting
+  - Boolean rendering
+- Empty state handling
+- Metadata display
+  - Title
+  - Description
+  - Additional context
+
+### Export Capabilities
+- Supported Formats:
+  1. CSV
+     - Comma-separated values
+     - Universal spreadsheet compatibility
+     - Plain text format
+  2. JSON
+     - Full data structure
+     - API-friendly format
+     - Developer tools
+  3. Excel (XLSX)
+     - Native spreadsheet format
+     - Business-friendly
+     - Requires xlsx library
+
+- Export Features:
+  - Automatic filename generation
+  - Data type preservation
+  - Special character handling
+  - Large dataset support
+
+## Dependencies
+- Material-UI (@mui/material)
+- XLSX (xlsx)
+  ```bash
+  npm install xlsx
+  ```
+
+## Usage Example
+
+## Future Enhancements
+- [ ] Excel formatting options
+- [ ] Multiple sheet support
+- [ ] Custom column formatting
+- [ ] Export preferences
+- [ ] Batch export capabilities
