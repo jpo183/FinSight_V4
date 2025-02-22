@@ -32,21 +32,33 @@ async function testOwners() {
       client.release();
     }
 
-    // Use the search endpoint to find owners
-    console.log('\n2. Searching for owners:');
-    const searchResponse = await hubspotApi.post('/owners/search', {
-      filterGroups: [{
-        filters: [{
-          propertyName: 'id',
-          operator: 'IN',
-          values: TEST_OWNER_IDS
-        }]
-      }],
-      properties: ['firstname', 'lastname', 'email', 'archived'],
-      limit: 100
+    // Get all owners
+    console.log('\n2. Fetching owners:');
+    const response = await hubspotApi.get('/owners', {
+      params: {
+        limit: 100,
+        archived: true  // This should include both active and inactive owners
+      }
     });
 
-    console.log('Search Response:', JSON.stringify(searchResponse.data, null, 2));
+    // Filter for our test IDs
+    const foundOwners = response.data.results.filter(owner => 
+      TEST_OWNER_IDS.includes(owner.id)
+    );
+
+    console.log('\nFound owners:', JSON.stringify(foundOwners, null, 2));
+    
+    // Summary
+    console.log('\nSummary:');
+    TEST_OWNER_IDS.forEach(id => {
+      const owner = foundOwners.find(o => o.id === id);
+      console.log(`Owner ${id}: ${owner ? 'Found' : 'Not found'}`);
+      if (owner) {
+        console.log(`- Name: ${owner.firstName} ${owner.lastName}`);
+        console.log(`- Email: ${owner.email}`);
+        console.log(`- Status: ${owner.archived ? 'Inactive' : 'Active'}`);
+      }
+    });
 
   } catch (error) {
     console.error('Test failed:', error);
