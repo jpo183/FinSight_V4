@@ -84,31 +84,57 @@ async function fetchDealsWithCompanies() {
 
     // Get associated company IDs directly from the deal
     const companyIds = new Set();
+    let dealsWithCompanies = 0;
+    let dealsWithoutCompanies = 0;
+    let failedAssociationFetches = 0;
+
+    console.log('\n=== Processing Deal-Company Associations ===');
     for (const deal of allDeals) {
-      console.log(`Fetching associations for deal: ${deal.properties.dealname}`);
+      console.log(`\nFetching associations for deal: ${deal.id} - ${deal.properties.dealname}`);
       
-      // Create a new axios instance for v4 API calls
-      const v4Api = axios.create({
-        baseURL: 'https://api.hubspot.com/crm/v4',
-        headers: {
-          'Authorization': `Bearer ${process.env.HUBSPOT_API_KEY}`,
-          'Content-Type': 'application/json'
+      try {
+        // Create a new axios instance for v4 API calls
+        const v4Api = axios.create({
+          baseURL: 'https://api.hubspot.com/crm/v4',
+          headers: {
+            'Authorization': `Bearer ${process.env.HUBSPOT_API_KEY}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        const associationsResponse = await v4Api.get(`/objects/deals/${deal.id}/associations/company`);
+        console.log('Association response:', JSON.stringify(associationsResponse.data, null, 2));
+        
+        const associatedCompanies = associationsResponse.data.results || [];
+        console.log(`Found ${associatedCompanies.length} companies for deal: ${deal.properties.dealname}`);
+        
+        if (associatedCompanies.length > 0) {
+          dealsWithCompanies++;
+          associatedCompanies.forEach(company => {
+            companyIds.add(company.toObjectId);
+          });
+        } else {
+          dealsWithoutCompanies++;
+          console.log('⚠️ No companies found for this deal');
         }
-      });
-      
-      const associationsResponse = await v4Api.get(`/objects/deals/${deal.id}/associations/company`);
-      console.log('Association response:', JSON.stringify(associationsResponse.data, null, 2));
-      
-      const associatedCompanies = associationsResponse.data.results || [];
-      console.log(`Found ${associatedCompanies.length} companies for deal: ${deal.properties.dealname}`);
-      
-      associatedCompanies.forEach(company => {
-        companyIds.add(company.toObjectId);
-      });
+      } catch (error) {
+        failedAssociationFetches++;
+        console.error('❌ Error fetching associations:', error.message);
+        console.error('Deal ID:', deal.id);
+        console.error('Deal Name:', deal.properties.dealname);
+        if (error.response) {
+          console.error('Response Status:', error.response.status);
+          console.error('Response Data:', JSON.stringify(error.response.data, null, 2));
+        }
+      }
     }
 
-    console.log(`Found ${companyIds.size} unique companies`);
-    console.log('Company IDs:', Array.from(companyIds));
+    console.log('\n=== Deal-Company Association Summary ===');
+    console.log(`Total Deals: ${allDeals.length}`);
+    console.log(`Deals with Companies: ${dealsWithCompanies}`);
+    console.log(`Deals without Companies: ${dealsWithoutCompanies}`);
+    console.log(`Failed Association Fetches: ${failedAssociationFetches}`);
+    console.log(`Unique Companies Found: ${companyIds.size}`);
 
     // Fetch company details for all collected company IDs
     const companies = await fetchCompanyDetails(Array.from(companyIds));
@@ -197,7 +223,11 @@ async function fetchOwnerDetails(ownerIds) {
       const promises = batch.map(id => {
         console.log(`Creating request for owner ID: ${id}`);
         return makeRateLimitedRequest(() => 
-          hubspotApi.get(`/owners/${id}`)
+          hubspotApi.get(`/owners/${id}`, {
+            params: {
+              archived: true  // Include inactive/archived owners
+            }
+          })
         );
       });
       
@@ -219,7 +249,6 @@ async function fetchOwnerDetails(ownerIds) {
           console.error('Response status:', error.response.status);
           console.error('Response headers:', JSON.stringify(error.response.headers, null, 2));
         }
-        // Continue with next batch even if one fails
         continue;
       }
       
