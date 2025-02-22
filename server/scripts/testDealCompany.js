@@ -1,6 +1,6 @@
 require('dotenv').config();
 const axios = require('axios');
-const { pool } = require('../db/pool');
+const { pool } = require('../db/index');
 
 const TEST_DEAL_ID = '29118912099';
 const TEST_COMPANY_ID = '20268113298';
