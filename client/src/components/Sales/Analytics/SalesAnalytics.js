@@ -19,20 +19,70 @@ const SalesAnalytics = () => {
   const [error, setError] = useState(null);
   const [result, setResult] = useState(null);
 
+  // Log component mount
+  React.useEffect(() => {
+    console.log('[SalesAnalytics] Component mounted');
+    return () => console.log('[SalesAnalytics] Component unmounted');
+  }, []);
+
+  // Handle query input changes
+  const handleQueryChange = (e) => {
+    const newQuery = e.target.value;
+    console.log('[SalesAnalytics] Query input changed:', newQuery);
+    setQuery(newQuery);
+  };
+
+  // Handle example query selection
+  const handleExampleClick = (example) => {
+    console.log('[SalesAnalytics] Example query selected:', example);
+    setQuery(example);
+  };
+
+  // Handle query submission
   const handleQuerySubmit = async (e) => {
     e.preventDefault();
+    console.log('[SalesAnalytics] Submitting query:', query);
+    
     setLoading(true);
     setError(null);
     
     try {
+      console.log('[SalesAnalytics] Calling AI Query Service...');
       const response = await SalesAiQueryService.analyzeQuery(query);
+      console.log('[SalesAnalytics] Query response received:', response);
+      
       setResult(response);
     } catch (err) {
+      console.error('[SalesAnalytics] Query error:', err);
       setError(err.message);
     } finally {
+      console.log('[SalesAnalytics] Query processing completed');
       setLoading(false);
     }
   };
+
+  // Log state changes
+  React.useEffect(() => {
+    if (loading) {
+      console.log('[SalesAnalytics] Loading state:', loading);
+    }
+  }, [loading]);
+
+  React.useEffect(() => {
+    if (error) {
+      console.log('[SalesAnalytics] Error state:', error);
+    }
+  }, [error]);
+
+  React.useEffect(() => {
+    if (result) {
+      console.log('[SalesAnalytics] Result state updated:', {
+        sql: result.sql,
+        explanation: result.explanation,
+        resultCount: result.results?.length
+      });
+    }
+  }, [result]);
 
   return (
     <Box sx={{ maxWidth: 1200, margin: '0 auto', p: 3 }}>
@@ -53,7 +103,7 @@ const SalesAnalytics = () => {
           <TextField
             fullWidth
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={handleQueryChange}
             placeholder="Example: Show me total pipeline value for Q1"
             variant="outlined"
             disabled={loading}
@@ -83,7 +133,7 @@ const SalesAnalytics = () => {
                 key={index}
                 size="small"
                 variant="outlined"
-                onClick={() => setQuery(example)}
+                onClick={() => handleExampleClick(example)}
                 sx={{ textTransform: 'none' }}
               >
                 {example}
