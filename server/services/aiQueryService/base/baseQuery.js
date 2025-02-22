@@ -142,10 +142,13 @@ class BaseQueryService {
           role: "user",
           content: prompt
         }
-      ]
+      ],
+      response_format: { type: "json_object" }
     });
 
     console.log('📥 Received OpenAI response');
+    console.log('📝 Raw response:', completion.choices[0].message.content);
+    
     const response = JSON.parse(completion.choices[0].message.content);
     
     console.log('🔍 Starting SQL transformation');
