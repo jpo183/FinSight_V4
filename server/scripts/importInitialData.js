@@ -93,7 +93,6 @@ async function fetchDealsWithCompanies() {
       console.log(`\nFetching associations for deal: ${deal.id} - ${deal.properties.dealname}`);
       
       try {
-        // Create a new axios instance for v4 API calls
         const v4Api = axios.create({
           baseURL: 'https://api.hubspot.com/crm/v4',
           headers: {
@@ -102,35 +101,12 @@ async function fetchDealsWithCompanies() {
           }
         });
         
-        // Add specific logging for our test case
-        if (deal.id === '29118912099') {
-          console.log('\n=== TEST CASE DEAL FOUND ===');
-          console.log('Deal Properties:', JSON.stringify(deal.properties, null, 2));
-          console.log('Making association request...');
-        }
-        
         const associationsResponse = await v4Api.get(`/objects/deals/${deal.id}/associations/company`);
-        
-        // Detailed logging for our test case
-        if (deal.id === '29118912099') {
-          console.log('Association Response:', JSON.stringify(associationsResponse.data, null, 2));
-          console.log('Response Headers:', JSON.stringify(associationsResponse.headers, null, 2));
-          console.log('Response Status:', associationsResponse.status);
-          
-          // Make a direct company check
-          try {
-            const companyResponse = await hubspotApi.get(`/objects/companies/20268113298`);
-            console.log('\nDirect Company Check:');
-            console.log('Company exists in HubSpot:', JSON.stringify(companyResponse.data, null, 2));
-          } catch (companyError) {
-            console.error('Error fetching company directly:', companyError.message);
-          }
-        }
-        
         const associatedCompanies = associationsResponse.data.results || [];
         console.log(`Found ${associatedCompanies.length} companies for deal: ${deal.properties.dealname}`);
         
         if (associatedCompanies.length > 0) {
+          deal.companyId = associatedCompanies[0].toObjectId;
           dealsWithCompanies++;
           associatedCompanies.forEach(company => {
             companyIds.add(company.toObjectId);
@@ -138,12 +114,6 @@ async function fetchDealsWithCompanies() {
         } else {
           dealsWithoutCompanies++;
           console.log('⚠️ No companies found for this deal');
-          
-          // Additional logging for our test case
-          if (deal.id === '29118912099') {
-            console.log('⚠️ TEST CASE DEAL HAS NO COMPANIES IN RESPONSE');
-            console.log('Expected company ID 20268113298 not found in associations');
-          }
         }
       } catch (error) {
         failedAssociationFetches++;
@@ -400,12 +370,9 @@ async function saveToDatabase(deals, companies, owners) {
     // Then deals
     console.log('\n=== Processing Deals ===');
     for (const deal of deals) {
-      const companyId = deal.associations?.companies?.results[0]?.id;
-      const closeDate = new Date(deal.properties.closedate);
-      
       const dealData = {
         id: deal.id,
-        company_id: companyId,
+        company_id: deal.companyId || null,
         name: deal.properties.dealname,
         amount: deal.properties.amount || null,
         create_date: deal.properties.createdate,
@@ -420,8 +387,8 @@ async function saveToDatabase(deals, companies, owners) {
         owner_id: deal.properties.hubspot_owner_id,
         is_closed: deal.properties.dealstage?.includes('closed'),
         is_won: deal.properties.dealstage?.includes('won'),
-        fiscal_quarter: `Q${Math.ceil(closeDate.getMonth() / 3)}`,
-        fiscal_year: closeDate.getFullYear()
+        fiscal_quarter: `Q${Math.ceil(new Date(deal.properties.closedate).getMonth() / 3)}`,
+        fiscal_year: new Date(deal.properties.closedate).getFullYear()
       };
       console.log('\nDeal data to insert:', JSON.stringify(dealData, null, 2));
       
