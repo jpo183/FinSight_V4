@@ -407,6 +407,7 @@ async function saveToDatabase(deals, companies, owners) {
           is_closed, is_won, fiscal_quarter, fiscal_year
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
         ON CONFLICT (deal_id) DO UPDATE SET
+          company_id = EXCLUDED.company_id,
           deal_name = EXCLUDED.deal_name,
           amount = EXCLUDED.amount,
           close_date = EXCLUDED.close_date,
