@@ -56,4 +56,4 @@ app.use((err, req, res, next) => {
 
 app.use('/api/ai-query', aiQueryRouter);
 
-module.exports = app; 
+module.exports = { app, corsOptions }; 

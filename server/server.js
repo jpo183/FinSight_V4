@@ -4,6 +4,7 @@ const cors = require('cors');
 const { createTables } = require('./db/schema');
 const { errorHandler, APIError } = require('./middleware/errorHandler');
 const { pool } = require('./db/index');
+const { app, corsOptions } = require('./app');  // Import both
 
 const app = express();
 
@@ -92,7 +93,7 @@ app.get('/api/test-tables', async (req, res, next) => {
   }
 });
 
-const port = process.env.PORT || 3001;
+const PORT = process.env.PORT || 3001;
 
 // Error handling middleware (must be last)
 app.use(errorHandler);
@@ -106,9 +107,9 @@ pool.query('SELECT NOW()', (err, res) => {
   }
 });
 
-app.listen(port, () => {
+app.listen(PORT, () => {
   console.log(`[Server] Environment: ${process.env.NODE_ENV}`);
-  console.log(`[Server] Running on port ${port}`);
+  console.log(`[Server] Running on port ${PORT}`);
   console.log(`[Server] CORS enabled for: ${corsOptions.origin}`);
   console.log(`[Server] Database URL: ${process.env.DB_CONNECTION_STRING?.replace(/:[^:@]*@/, ':****@')}`);
 });
