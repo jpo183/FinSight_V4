@@ -3,6 +3,8 @@ const express = require('express');
 const cors = require('cors');
 const { createTables } = require('./db/schema');
 const { errorHandler } = require('./middleware/errorHandler');
+const { pool } = require('./db/database');
+const { APIError } = require('./middleware/APIError');
 
 const app = express();
 
@@ -34,6 +36,20 @@ app.post('/api/config', (req, res) => {
     message: 'Configuration saved successfully',
     data: { apiKey, hostUrl, databaseUrl, hubspotApiKey, openaiApiKey }
   });
+});
+
+// Test database connection
+app.get('/api/test-db', async (req, res, next) => {
+  try {
+    const result = await pool.query('SELECT NOW()');
+    res.json({
+      message: 'Database connected successfully',
+      timestamp: result.rows[0].now,
+      status: 'success'
+    });
+  } catch (error) {
+    next(new APIError('Database connection failed', 500));
+  }
 });
 
 const port = process.env.PORT || 3001;
