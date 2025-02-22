@@ -32,17 +32,32 @@ async function testOwners() {
       client.release();
     }
 
-    // Get all owners
-    console.log('\n2. Fetching owners:');
-    const response = await hubspotApi.get('/owners', {
+    // Get active owners
+    console.log('\n2. Fetching active owners:');
+    const activeResponse = await hubspotApi.get('/owners', {
       params: {
         limit: 100,
-        archived: true  // This should include both active and inactive owners
+        archived: false
       }
     });
 
+    // Get inactive owners
+    console.log('\n3. Fetching inactive owners:');
+    const inactiveResponse = await hubspotApi.get('/owners', {
+      params: {
+        limit: 100,
+        archived: true
+      }
+    });
+
+    // Combine results
+    const allOwners = [
+      ...activeResponse.data.results,
+      ...inactiveResponse.data.results
+    ];
+
     // Filter for our test IDs
-    const foundOwners = response.data.results.filter(owner => 
+    const foundOwners = allOwners.filter(owner => 
       TEST_OWNER_IDS.includes(owner.id)
     );
 
