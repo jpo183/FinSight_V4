@@ -8,6 +8,7 @@ const SalesPrompts = require('../services/aiQueryService/prompts/sales/deals');
 
 // POST endpoint for AI queries
 router.post('/analyze', async (req, res) => {
+  console.log('\n[aiQuery] Route handler start ================');
   console.log('[aiQuery] POST /analyze received');
   console.log('[aiQuery] Request body:', req.body);
   
@@ -51,9 +52,21 @@ router.post('/analyze', async (req, res) => {
       results: queryResult.rows
     });
 
+    console.log('[aiQuery] Query processed successfully');
+    console.log('[aiQuery] Route handler end ==================\n');
+
   } catch (error) {
-    console.error('[aiQuery] Error:', error);
-    res.status(500).json({ error: error.message });
+    console.error('\n[aiQuery] Error in route handler ================');
+    console.error('[aiQuery] Error details:', error);
+    console.error('[aiQuery] Stack trace:', error.stack);
+    console.error('[aiQuery] Error handler end ==================\n');
+    
+    res.status(500).json({ 
+      error: error.message,
+      path: req.path,
+      method: req.method,
+      timestamp: new Date().toISOString()
+    });
   }
 });
 

@@ -24,12 +24,15 @@ app.use((req, res, next) => {
 // Enable CORS with options
 app.use(cors(corsOptions));
 
-// Log all incoming requests
+// Add detailed request logging middleware
 app.use((req, res, next) => {
+  console.log('\n[Request Start] ================');
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
-  console.log('[Request] Headers:', req.headers);
+  console.log('[Request] Headers:', JSON.stringify(req.headers, null, 2));
   console.log('[Request] Body:', req.body);
   console.log('[Request] Query:', req.query);
+  console.log('[Request] Params:', req.params);
+  console.log('[Request End] ==================\n');
   next();
 });
 
@@ -37,7 +40,10 @@ app.use((req, res, next) => {
 app.use((req, res, next) => {
   const originalJson = res.json;
   res.json = function(data) {
+    console.log('\n[Response Start] ================');
+    console.log(`[${new Date().toISOString()}] Response for ${req.method} ${req.path}`);
     console.log('[Response] Data:', data);
+    console.log('[Response End] ==================\n');
     return originalJson.call(this, data);
   };
   next();
@@ -55,13 +61,15 @@ app.use((err, req, res, next) => {
 });
 
 // Log route registration
-console.log('[Server] Registering routes...');
-app.use('/api/sales/analyze', aiQueryRouter);
-console.log('[Server] Routes registered');
-
-// Add body parsing middleware
+console.log('\n[Server] Starting route registration...');
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use('/api/sales/analyze', aiQueryRouter);
+console.log('[Server] Routes registered successfully');
+console.log('[Server] Available routes:', app._router.stack
+  .filter(r => r.route)
+  .map(r => `${Object.keys(r.route.methods)} ${r.route.path}`)
+);
 
 // Add a test endpoint
 app.get('/api/test', (req, res) => {
