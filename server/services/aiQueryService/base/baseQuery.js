@@ -96,14 +96,13 @@ class BaseQueryService {
     const prompt = `
       Given this database schema: ${JSON.stringify(schema, null, 2)}
       
-      And these relevant query patterns: ${JSON.stringify(matchingPrompts, null, 2)}
-      
- 
-      And these name search rules:
+      CRITICAL NAME SEARCH RULES (Must be followed):
       - Always use ILIKE with wildcards (%name%) for name searches
       - Never use exact matches (=) for names
       - Example: owner_name ILIKE '%Shannon%' instead of owner_name = 'Shannon'
-
+      
+      And these relevant query patterns: ${JSON.stringify(matchingPrompts, null, 2)}
+      
       Generate a SQL query to answer: "${query}"
       
       The query appears to be a ${queryType} type query.
@@ -130,7 +129,7 @@ class BaseQueryService {
       messages: [
         {
           role: "system",
-          content: `You are a SQL expert specializing in ${domain} analytics.`
+          content: `You are a SQL expert specializing in ${domain} analytics. IMPORTANT: Always use ILIKE with wildcards for any name searches.`
         },
         {
           role: "user",
