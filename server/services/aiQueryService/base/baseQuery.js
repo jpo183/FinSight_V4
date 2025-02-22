@@ -154,16 +154,15 @@ class BaseQueryService {
     // Replace exact matches with contains (ILIKE)
     nameFields.forEach(field => {
       // More flexible pattern to catch various SQL formats
-      const pattern = new RegExp(`(\\w+\\.)?${field}\\s*=\\s*['"](.*?)['"]`, 'gi');
+      const pattern = new RegExp(`owners\.${field} = '([^']+)'`, 'gi');
       
-      response.sql = response.sql.replace(pattern, (match, tableAlias, value) => {
-        const fieldRef = tableAlias ? `${tableAlias}.${field}` : field;
+      response.sql = response.sql.replace(pattern, (match, value) => {
         console.log(`Processing name match: "${match}" with value: "${value}"`);
         
         // Split search terms and create ILIKE conditions
         const searchTerms = value.toLowerCase().trim().split(/\s+/);
         const conditions = searchTerms.map(term => 
-          `${fieldRef} ILIKE '%${term}%'`
+          `${field} ILIKE '%${term}%'`
         );
         
         const result = `(${conditions.join(' OR ')})`;
