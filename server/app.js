@@ -59,6 +59,10 @@ console.log('[Server] Registering routes...');
 app.use('/api/sales/analyze', aiQueryRouter);
 console.log('[Server] Routes registered');
 
+// Add body parsing middleware
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
 // Add a test endpoint
 app.get('/api/test', (req, res) => {
   console.log('[API] Test endpoint hit');
