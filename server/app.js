@@ -13,23 +13,32 @@ const corsOptions = {
   credentials: true
 };
 
-// Add CORS logging middleware
+// Move CORS before body parsing
+app.use(cors(corsOptions));
+
+// Body parsing middleware
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Add raw body logging
 app.use((req, res, next) => {
-  console.log('[CORS] Request Origin:', req.headers.origin);
-  console.log('[CORS] Request Method:', req.method);
-  console.log('[CORS] Request Headers:', req.headers);
+  let data = '';
+  req.on('data', chunk => {
+    data += chunk;
+  });
+  req.on('end', () => {
+    console.log('[Raw Body]:', data);
+  });
   next();
 });
-
-// Enable CORS with options
-app.use(cors(corsOptions));
 
 // Add detailed request logging middleware
 app.use((req, res, next) => {
   console.log('\n[Request Start] ================');
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
   console.log('[Request] Headers:', JSON.stringify(req.headers, null, 2));
-  console.log('[Request] Body:', req.body);
+  console.log('[Request] Raw Body:', req.rawBody);
+  console.log('[Request] Parsed Body:', req.body);
   console.log('[Request] Query:', req.query);
   console.log('[Request] Params:', req.params);
   console.log('[Request End] ==================\n');
@@ -60,16 +69,22 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Log route registration
+// Mount routes
 console.log('\n[Server] Starting route registration...');
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use('/api/sales/analyze', aiQueryRouter);
+app.use('/api', aiQueryRouter);
 console.log('[Server] Routes registered successfully');
-console.log('[Server] Available routes:', app._router.stack
-  .filter(r => r.route)
-  .map(r => `${Object.keys(r.route.methods)} ${r.route.path}`)
-);
+
+// Add route debugging
+app.get('/debug/routes', (req, res) => {
+  const routes = app._router.stack
+    .filter(r => r.route)
+    .map(r => ({
+      path: r.route.path,
+      methods: Object.keys(r.route.methods),
+      stack: r.route.stack.length
+    }));
+  res.json({ routes });
+});
 
 // Add a test endpoint
 app.get('/api/test', (req, res) => {

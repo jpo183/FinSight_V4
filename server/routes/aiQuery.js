@@ -6,6 +6,8 @@ const BaseQueryService = require('../services/aiQueryService/base/baseQuery');
 const SalesSchema = require('../services/aiQueryService/schemas/sales/tables');
 const SalesPrompts = require('../services/aiQueryService/prompts/sales/deals');
 
+console.log('[aiQuery] Initializing routes');
+
 // POST endpoint for AI queries
 router.post('/analyze', async (req, res) => {
   console.log('\n[aiQuery] Route handler start ================');
@@ -72,15 +74,23 @@ router.post('/analyze', async (req, res) => {
 
 // Update route handler to use both schema and prompts
 router.post('/sales/analyze', async (req, res) => {
-  console.log('[aiQuery] Received request:', req.body);
+  console.log('\n[aiQuery] Route handler start ================');
+  console.log('[aiQuery] POST /sales/analyze received');
+  console.log('[aiQuery] Raw request:', {
+    path: req.path,
+    method: req.method,
+    body: req.body,
+    headers: req.headers
+  });
   
   try {
-    const { query } = req.body;
+    const { query } = req.body || {};
     
     if (!query) {
-      console.log('[aiQuery] No query provided');
+      console.log('[aiQuery] No query provided in body:', req.body);
       return res.status(400).json({ 
-        error: 'Query is required' 
+        error: 'Query is required',
+        receivedBody: req.body 
       });
     }
 
@@ -95,12 +105,11 @@ router.post('/sales/analyze', async (req, res) => {
     res.json(result);
 
   } catch (error) {
-    console.error('[aiQuery] Error processing query:', error);
-    res.status(500).json({ 
-      error: 'Error processing query',
-      details: error.message 
-    });
+    console.error('[aiQuery] Error:', error);
+    res.status(500).json({ error: error.message });
   }
 });
+
+console.log('[aiQuery] Routes initialized');
 
 module.exports = router; 
