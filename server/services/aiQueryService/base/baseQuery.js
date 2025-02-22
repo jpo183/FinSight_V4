@@ -1,4 +1,4 @@
-const { openai } = require('../../../config/openai');
+const { openai } = require('../../../lib/openai');
 const { pool } = require('../../../config/database');
 
 class BaseQueryService {
