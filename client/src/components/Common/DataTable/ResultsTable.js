@@ -11,10 +11,14 @@ import {
   Box,
   Button,
   Menu,
-  MenuItem
+  MenuItem,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails
 } from '@mui/material';
 import DownloadIcon from '@mui/icons-material/Download';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import * as XLSX from 'xlsx';
 
 /**
@@ -23,11 +27,13 @@ import * as XLSX from 'xlsx';
  * @param {Array} props.data - Array of objects containing the data
  * @param {Object} props.metadata - Optional metadata about the results
  * @param {string} props.emptyMessage - Message to display when no data
+ * @param {string} props.sql - SQL query used to generate the results
  */
 const ResultsTable = ({ 
   data = [], 
   metadata = {}, 
-  emptyMessage = "No results found" 
+  emptyMessage = "No results found",
+  sql = null  // Add new prop for SQL
 }) => {
   const [anchorEl, setAnchorEl] = React.useState(null);
   const open = Boolean(anchorEl);
@@ -216,6 +222,34 @@ const ResultsTable = ({
           ))}
         </TableBody>
       </Table>
+      
+      {/* Debug SQL Section - Moved from SalesAnalytics */}
+      {sql && (
+        <Box sx={{ mt: 3 }}>
+          <Accordion>
+            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+              <Typography variant="caption" color="text.secondary">
+                Debug Information
+              </Typography>
+            </AccordionSummary>
+            <AccordionDetails>
+              <Typography variant="caption" color="text.secondary">
+                Generated SQL:
+              </Typography>
+              <Paper 
+                sx={{ 
+                  p: 1, 
+                  bgcolor: 'grey.100',
+                  fontFamily: 'monospace',
+                  fontSize: '0.75rem'
+                }}
+              >
+                {sql}
+              </Paper>
+            </AccordionDetails>
+          </Accordion>
+        </Box>
+      )}
     </TableContainer>
   );
 };

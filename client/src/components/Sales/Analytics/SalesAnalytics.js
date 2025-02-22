@@ -180,33 +180,8 @@ const SalesAnalytics = () => {
               title: 'Query Results',
               description: result.explanation
             }}
+            sql={result.sql}
           />
-
-          {/* Debug Section - Moved to bottom */}
-          <Box sx={{ mt: 3 }}>
-            <Accordion>
-              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                <Typography variant="caption" color="text.secondary">
-                  Debug Information
-                </Typography>
-              </AccordionSummary>
-              <AccordionDetails>
-                <Typography variant="caption" color="text.secondary">
-                  Generated SQL:
-                </Typography>
-                <Paper 
-                  sx={{ 
-                    p: 1, 
-                    bgcolor: 'grey.100',
-                    fontFamily: 'monospace',
-                    fontSize: '0.75rem'
-                  }}
-                >
-                  {result.sql}
-                </Paper>
-              </AccordionDetails>
-            </Accordion>
-          </Box>
         </Paper>
       )}
     </Box>
