@@ -54,6 +54,15 @@ app.use((err, req, res, next) => {
   });
 });
 
-app.use('/api/ai-query', aiQueryRouter);
+// Log route registration
+console.log('[Server] Registering routes...');
+app.use('/api/sales/analyze', aiQueryRouter);
+console.log('[Server] Routes registered');
+
+// Add a test endpoint
+app.get('/api/test', (req, res) => {
+  console.log('[API] Test endpoint hit');
+  res.json({ message: 'API is working' });
+});
 
 module.exports = { app, corsOptions }; 

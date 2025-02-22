@@ -8,6 +8,9 @@ const SalesPrompts = require('../services/aiQueryService/prompts/sales/deals');
 
 // POST endpoint for AI queries
 router.post('/analyze', async (req, res) => {
+  console.log('[aiQuery] POST /analyze received');
+  console.log('[aiQuery] Request body:', req.body);
+  
   try {
     const { query } = req.body;
     
@@ -49,11 +52,8 @@ router.post('/analyze', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error processing AI query:', error);
-    res.status(500).json({ 
-      error: 'Error processing query',
-      details: error.message 
-    });
+    console.error('[aiQuery] Error:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 
