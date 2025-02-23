@@ -84,10 +84,61 @@ const SalesAnalytics = () => {
   // Handle AI suggestion clicks
   const handleSuggestionClick = async (suggestion) => {
     console.log('[SalesAnalytics] AI suggestion clicked:', suggestion);
-    if (suggestion.action) {
-      // Handle suggestion action
-      setQuery(suggestion.text);
-      onSubmit({ preventDefault: () => {} }); // Trigger new query
+    
+    // Generate appropriate follow-up query based on action type
+    let followUpQuery = '';
+    const context = aiCore.getLastQuery(); // Get the last query for context
+    
+    switch (suggestion.action) {
+      case 'compare_reps':
+        followUpQuery = `compare sales rep performance with shannon`;
+        break;
+      case 'trend_analysis':
+        followUpQuery = `show monthly trend of shannon's won deals`;
+        break;
+      case 'value_analysis':
+        followUpQuery = `what is the total value of shannon's won deals`;
+        break;
+      default:
+        followUpQuery = context;
+    }
+
+    // Submit the follow-up query
+    await submitQuery(followUpQuery);
+  };
+
+  const submitQuery = async (queryText) => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      console.log('[SalesAnalytics] Submitting query:', queryText);
+      const response = await SalesAiQueryService.analyzeQuery(queryText, 'sales');
+      console.log('[SalesAnalytics] Query response received:', response);
+      
+      // Add to conversation history
+      aiCore.addToHistory('query', {
+        text: queryText,
+        timestamp: new Date(),
+        response: response
+      });
+
+      // Generate AI suggestions based on the response
+      const suggestions = await aiCore.analyzeResults(response);
+      
+      // Update UI with results
+      setResult({
+        sql: response.sql,
+        explanation: response.explanation,
+        results: response.results,
+        suggestions: suggestions
+      });
+    } catch (error) {
+      console.log('[SalesAnalytics] Query error:', error);
+      setError(error.message);
+    } finally {
+      setLoading(false);
+      console.log('[SalesAnalytics] Query processing completed');
     }
   };
 

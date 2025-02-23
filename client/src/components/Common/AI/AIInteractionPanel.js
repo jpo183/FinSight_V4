@@ -91,16 +91,23 @@ const AIInteractionPanel = ({
 
       {/* Conversation History - Only show if there's history */}
       {Array.isArray(history) && history.length > 0 && (
-        <Accordion>
+        <Accordion defaultExpanded>
           <AccordionSummary expandIcon={<ExpandMoreIcon />}>
             <Typography variant="subtitle2" color="text.secondary">
-              Conversation History
+              Conversation History ({history.length})
             </Typography>
           </AccordionSummary>
           <AccordionDetails>
             <Stack spacing={1}>
               {history.map((item, index) => (
-                <Box key={index} sx={{ p: 1, bgcolor: 'grey.50', borderRadius: 1 }}>
+                <Box 
+                  key={index} 
+                  sx={{ 
+                    p: 1, 
+                    bgcolor: item.type === 'query' ? 'grey.50' : 'primary.50',
+                    borderRadius: 1 
+                  }}
+                >
                   <Typography variant="caption" color="text.secondary">
                     {formatTimestamp(item?.timestamp)}
                   </Typography>
@@ -108,6 +115,11 @@ const AIInteractionPanel = ({
                     {item?.type === 'query' ? '🔍 ' : '💡 '}
                     {getMessageText(item)}
                   </Typography>
+                  {item.type === 'results' && item.data.results && (
+                    <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                      Result: {JSON.stringify(item.data.results)}
+                    </Typography>
+                  )}
                 </Box>
               ))}
             </Stack>
