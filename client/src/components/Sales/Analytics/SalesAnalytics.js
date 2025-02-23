@@ -191,28 +191,20 @@ const SalesAnalytics = () => {
     console.log('[SalesAnalytics] Transforming raw results:', results);
     
     return results.map(item => {
-      // Extract the first value from data object
       const rawValue = Object.values(item.data)[0];
       
-      // Format based on metric type
-      let formattedValue = rawValue;
-      
-      if (item.metric.includes('duration')) {
-        formattedValue = `${Math.round(rawValue)} days`;
-      } else if (item.metric.includes('deals')) {
-        const count = item.data.count || rawValue;
-        const avg = item.data.average;
-        formattedValue = avg ? 
-          `${count} deals, avg ${new Intl.NumberFormat('en-US', {
-            style: 'currency',
-            currency: 'USD'
-          }).format(avg)}` :
-          `${count} deals`;
+      // Only add "deals" suffix for count metrics
+      if (item.metric.includes('Total number of')) {
+        return {
+          Metric: item.metric,
+          Value: `${rawValue} deals`
+        };
       }
       
+      // All other metrics keep their raw value for now
       return {
         Metric: item.metric,
-        Value: formattedValue
+        Value: rawValue
       };
     });
   };
