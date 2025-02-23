@@ -147,50 +147,66 @@ Remember: ALWAYS use ILIKE with wildcards for names (e.g., owner_name ILIKE '%sh
     try {
       const response = JSON.parse(responseText);
       
-      // Check if we have a valid response structure
-      if (!response.sql && !response.error) {
-        throw new Error('Response missing required fields');
+      // Check if we have a valid response structure (all required fields present)
+      const requiredFields = ['sql', 'explanation', 'queryType', 'timePeriod', 'filters', 'results', 'error'];
+      const missingFields = requiredFields.filter(field => !(field in response));
+      
+      if (missingFields.length > 0) {
+        throw new Error(`Response missing required fields: ${missingFields.join(', ')}`);
       }
 
-      // If there's an error in the response, throw it
+      // If there's an error but the format is valid, return the response
       if (response.error) {
-        throw new APIError(response.error, 400);
+        return {
+          sql: null,
+          explanation: response.error,
+          queryType: null,
+          timePeriod: {"start": null, "end": null},
+          filters: [],
+          results: [],
+          error: response.error
+        };
       }
       
-      console.log('🔍 Starting SQL transformation');
-      console.log('📝 Original SQL:', response.sql);
-      
-      // Define name fields that should use ILIKE
-      const nameFields = [
-        'owner_name',
-        'contact_name',
-        'company_name',
-      ];
-      
-      nameFields.forEach(field => {
-        console.log(`\n🔎 Processing field: ${field}`);
-        const pattern = new RegExp(`((?:\\w+\\.)?)${field}\\s*=\\s*'([^']+)'`, 'gi');
+      // Only proceed with SQL transformation if we have SQL
+      if (response.sql) {
+        console.log('🔍 Starting SQL transformation');
+        console.log('📝 Original SQL:', response.sql);
         
-        // Test if pattern matches before replacement
-        const matches = response.sql.match(pattern);
-        console.log('🔍 Pattern matches:', matches);
+        // Define name fields that should use ILIKE
+        const nameFields = [
+          'owner_name',
+          'contact_name',
+          'company_name',
+        ];
         
-        response.sql = response.sql.replace(pattern, (match, alias, value) => {
-          console.log(`✨ Found match: "${match}"`);
-          console.log(`📌 Table alias: "${alias || 'none'}"`);
-          console.log(`📌 Search value: "${value}"`);
+        nameFields.forEach(field => {
+          console.log(`\n🔎 Processing field: ${field}`);
+          const pattern = new RegExp(`((?:\\w+\\.)?)${field}\\s*=\\s*'([^']+)'`, 'gi');
           
-          const searchTerms = value.toLowerCase().trim().split(/\s+/);
-          const conditions = searchTerms.map(term => `${alias}${field} ILIKE '%${term}%'`);
+          // Test if pattern matches before replacement
+          const matches = response.sql.match(pattern);
+          console.log('🔍 Pattern matches:', matches);
           
-          const result = `(${conditions.join(' OR ')})`;
-          console.log(`🔄 Transformed to: ${result}`);
-          return result;
+          response.sql = response.sql.replace(pattern, (match, alias, value) => {
+            console.log(`✨ Found match: "${match}"`);
+            console.log(`📌 Table alias: "${alias || 'none'}"`);
+            console.log(`📌 Search value: "${value}"`);
+            
+            const searchTerms = value.toLowerCase().trim().split(/\s+/);
+            const conditions = searchTerms.map(term => `${alias}${field} ILIKE '%${term}%'`);
+            
+            const result = `(${conditions.join(' OR ')})`;
+            console.log(`🔄 Transformed to: ${result}`);
+            return result;
+          });
         });
-      });
 
-      console.log('\n📝 Final SQL:', response.sql);
+        console.log('\n📝 Final SQL:', response.sql);
+      }
+
       return response;
+
     } catch (error) {
       console.error('Failed to parse OpenAI response:', error);
       console.error('Raw response:', responseText);
