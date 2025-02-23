@@ -104,6 +104,18 @@ Remember:
 
       console.log('📚 Updated conversation history:', this.conversationHistory);
 
+      if (aiResponse.queryType === 'analysis') {
+        const results = [];
+        for (let i = 0; i < aiResponse.sql.length; i++) {
+          const queryResults = await this.executeSQL(aiResponse.sql[i]);
+          results.push({
+            metric: aiResponse.metrics[i],
+            data: queryResults
+          });
+        }
+        aiResponse.results = results;
+      }
+
       return {
         query,
         sql: aiResponse.sql,
@@ -195,7 +207,25 @@ You MUST return responses in this exact JSON format:
   "error": string | null
 }
 
-Remember: ALWAYS use ILIKE with wildcards for names (e.g., owner_name ILIKE '%shannon%')`
+Remember: ALWAYS use ILIKE with wildcards for names (e.g., owner_name ILIKE '%shannon%')
+
+ANALYSIS RULES:
+1. For suggestion/analysis requests, return multiple SQL queries in an array
+2. Each query should focus on a specific metric:
+   - Win/loss ratio
+   - Average deal sizes (won vs lost)
+   - Sales cycle duration
+   - Industry success rates
+   - Common stages where deals are lost
+3. Format response as:
+{
+  "sql": string[] | null,  // Array of SQL queries
+  "metrics": string[] | null,  // Description of each metric
+  "explanation": string | null,
+  "queryType": "analysis",
+  "results": [],
+  "error": string | null
+}`
     };
 
     const queryMessage = {
