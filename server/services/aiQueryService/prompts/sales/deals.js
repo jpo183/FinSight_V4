@@ -170,6 +170,31 @@ const SALES_PROMPTS = {
       "Track ownership and accountability in responses",
       "Preserve historical context for trend analysis"
     ]
+  },
+
+  responseFormat: {
+    required: true,
+    structure: {
+      sql: "SQL query string or null",
+      explanation: "Brief explanation of what the query does",
+      queryType: "Type of query (count, aggregate, etc)",
+      timePeriod: {
+        start: "ISO date or null",
+        end: "ISO date or null"
+      },
+      filters: ["Array of applied filters"],
+      results: [],
+      error: "Error message or null"
+    },
+    example: {
+      sql: "SELECT COUNT(*) FROM deals d JOIN owners o ON d.owner_id = o.owner_id WHERE o.owner_name ILIKE '%shannon%' AND d.is_won = FALSE",
+      explanation: "Counting lost deals for Shannon",
+      queryType: "count",
+      timePeriod: {"start": null, "end": null},
+      filters: ["owner:shannon", "status:lost"],
+      results: [],
+      error: null
+    }
   }
 };
 
