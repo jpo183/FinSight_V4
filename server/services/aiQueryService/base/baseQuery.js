@@ -107,52 +107,35 @@ class BaseQueryService {
   static async generateSQL(messages, { domain, schema, queryType, prompts }) {
     console.log('💫 generateSQL started');
     
-    // Extract previous context from messages
-    const previousExchanges = messages
-      .slice(1, -1)  // Skip system message and current query
-      .map(m => `${m.role}: ${m.content}`)
-      .join('\n');
-    
-    const prompt = `
-      Given this database schema: ${JSON.stringify(schema, null, 2)}
-      
-      ⚠️ CRITICAL NAME SEARCH RULES (MUST BE FOLLOWED):
-      - ALWAYS use ILIKE with wildcards (%name%) for ANY name searches
-      - NEVER use exact matches (=) for names
-      - REQUIRED FORMAT: owner_name ILIKE '%name%'
-      - EXAMPLE: owner_name ILIKE '%shannon%' NOT owner_name = 'shannon'
-      
-      Previous conversation:
-      ${previousExchanges}
-      
-      Generate a SQL query to answer: "${messages[messages.length - 1].content}"
-      
-      The query appears to be a ${queryType} type query.
-      
-      ⚠️ YOU MUST RESPOND WITH THIS EXACT JSON STRUCTURE (even if there's an error):
-      {
-        "sql": "YOUR SQL QUERY HERE",
-        "explanation": "BRIEF EXPLANATION OF WHAT THE QUERY DOES",
-        "queryType": "${queryType}",
-        "timePeriod": {"start": "ISO_DATE", "end": "ISO_DATE"},
-        "filters": ["LIST", "OF", "APPLIED", "FILTERS"],
-        "results": [],
-        "error": null  // Include error message here if something goes wrong
-      }
-      
-      If you encounter any issues, set the error field and provide empty/null values for other fields.
-    `;
+    const systemMessage = {
+      role: "system",
+      content: `You are an API that always returns responses in the exact following JSON format:
+{
+  "sql": string | null,
+  "explanation": string | null,
+  "queryType": string | null,
+  "timePeriod": {"start": null, "end": null},
+  "filters": [],
+  "results": [],
+  "error": string | null
+}
+
+For every query, you must output a valid JSON object with all of these keys present. If you do not have data for a key, set its value to null (or an empty array for "filters" and "results") as appropriate. Even when an error occurs or there is insufficient data, fill in the "error" field with the error message but still include all the other keys exactly as specified. Do not include any additional text outside of this JSON structure.
+
+Given this database schema: ${JSON.stringify(schema, null, 2)}
+
+Remember: ALWAYS use ILIKE with wildcards for names (e.g., owner_name ILIKE '%shannon%')`
+    };
+
+    const queryMessage = {
+      role: "user",
+      content: messages[messages.length - 1].content
+    };
 
     console.log('🤖 Calling OpenAI');
     const completion = await openai.chat.completions.create({
       model: "gpt-4-turbo-preview",
-      messages: [
-        ...messages,
-        {
-          role: "system",
-          content: "You MUST respond with ONLY the exact JSON structure specified, including error field if needed. No other text allowed."
-        }
-      ],
+      messages: [systemMessage, queryMessage],
       temperature: 0.3,
       response_format: { type: "json_object" }
     });
