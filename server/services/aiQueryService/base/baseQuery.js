@@ -75,57 +75,64 @@ Remember:
       }
 
       // Only try to execute SQL if we have it
-      let results = [];
-      if (aiResponse.sql) {
-        console.log('✨ Executing SQL:', aiResponse.sql);
-        results = await this.executeSQL(aiResponse.sql);
-      }
-
-      // Store this exchange in conversation history
-      console.log('💾 Updating conversation history');
-      this.conversationHistory = this.conversationHistory || [];
-      this.conversationHistory.push(
-        { 
-          role: "user", 
-          content: query,
-          timestamp: new Date().toISOString(),
-          context: this.getConversationContext()
-        },
-        { 
-          role: "assistant", 
-          content: JSON.stringify({
-            sql: aiResponse.sql,
-            results: results,
-            context: this.getConversationContext()
-          }),
-          timestamp: new Date().toISOString()
-        }
-      );
-
-      console.log('📚 Updated conversation history:', this.conversationHistory);
-
       if (aiResponse.queryType === 'analysis') {
-        const results = [];
-        for (let i = 0; i < aiResponse.sql.length; i++) {
-          const queryResults = await this.executeSQL(aiResponse.sql[i]);
-          results.push({
-            metric: aiResponse.metrics[i],
-            data: queryResults
-          });
+        console.log('📊 Processing analysis results');
+        const results = await this.executeSQL(aiResponse.sql);
+        return {
+          query,
+          sql: aiResponse.sql,
+          explanation: aiResponse.explanation,
+          results: results.map((result, index) => ({
+            metric: aiResponse.metrics[index],
+            data: result
+          })),
+          metadata: {
+            ...aiResponse.metadata,
+            conversationContext: this.getConversationContext()
+          }
+        };
+      } else {
+        // Handle single query results (existing logic)
+        let results = [];
+        if (aiResponse.sql) {
+          console.log('✨ Executing SQL:', aiResponse.sql);
+          results = await this.executeSQL(aiResponse.sql);
         }
-        aiResponse.results = results;
-      }
 
-      return {
-        query,
-        sql: aiResponse.sql,
-        explanation: aiResponse.explanation,
-        results: results,
-        metadata: {
-          ...aiResponse.metadata,
-          conversationContext: this.getConversationContext()
-        }
-      };
+        // Store this exchange in conversation history
+        console.log('💾 Updating conversation history');
+        this.conversationHistory = this.conversationHistory || [];
+        this.conversationHistory.push(
+          { 
+            role: "user", 
+            content: query,
+            timestamp: new Date().toISOString(),
+            context: this.getConversationContext()
+          },
+          { 
+            role: "assistant", 
+            content: JSON.stringify({
+              sql: aiResponse.sql,
+              results: results,
+              context: this.getConversationContext()
+            }),
+            timestamp: new Date().toISOString()
+          }
+        );
+
+        console.log('📚 Updated conversation history:', this.conversationHistory);
+
+        return {
+          query,
+          sql: aiResponse.sql,
+          explanation: aiResponse.explanation,
+          results: results,
+          metadata: {
+            ...aiResponse.metadata,
+            conversationContext: this.getConversationContext()
+          }
+        };
+      }
     } catch (error) {
       console.error(`❌ Error processing ${domain} query:`, error);
       throw error;
@@ -367,14 +374,27 @@ When analyzing performance, include queries for:
   }
 
   /**
-   * Execute SQL query
+   * Execute SQL query or queries
    * @private
    */
   static async executeSQL(sql) {
     const client = await pool.connect();
     try {
-      const result = await client.query(sql);
-      return result.rows;
+      if (Array.isArray(sql)) {
+        // Handle multiple queries
+        const results = [];
+        for (const query of sql) {
+          console.log('🔍 Executing query:', query);
+          const result = await client.query(query);
+          results.push(result.rows[0]); // Get first row of each result
+        }
+        return results;
+      } else {
+        // Handle single query (existing logic)
+        console.log('🔍 Executing single query:', sql);
+        const result = await client.query(sql);
+        return result.rows;
+      }
     } finally {
       client.release();
     }
