@@ -13,36 +13,47 @@ class BaseQueryService {
    */
   static async processQuery(query, { domain, schema, prompts }) {
     try {
-      // Detect query type and pattern
-      const queryType = this.detectQueryType(query, prompts.queryPatterns);
-      
-      // Find matching prompt examples
-      const matchingPrompts = this.findMatchingPrompts(query, prompts.commonQueries);
-      
-      // Generate SQL using OpenAI
-      const aiResponse = await this.generateSQL(query, {
+      // Build conversation history
+      const messages = [
+        {
+          role: "system",
+          content: `${prompts.roleContext.primaryRole}\n\nSchema: ${JSON.stringify(schema, null, 2)}`
+        }
+      ];
+
+      // Add conversation history if it exists
+      if (this.conversationHistory?.length > 0) {
+        messages.push(...this.conversationHistory.slice(-5)); // Keep last 5 exchanges
+      }
+
+      // Add current query
+      messages.push({
+        role: "user",
+        content: query
+      });
+
+      // Generate SQL using OpenAI with conversation context
+      const aiResponse = await this.generateSQL(messages, {
         domain,
         schema,
-        queryType,
-        matchingPrompts
+        queryType: this.detectQueryType(query, prompts.queryPatterns)
       });
-      
-      // Validate the generated SQL
-      await this.validateSQL(aiResponse.sql, schema);
-      
-      // Execute the query
-      const results = await this.executeSQL(aiResponse.sql);
+
+      // Store this exchange in conversation history
+      this.conversationHistory = this.conversationHistory || [];
+      this.conversationHistory.push(
+        { role: "user", content: query },
+        { role: "assistant", content: `Generated SQL: ${aiResponse.sql}\nResults: ${JSON.stringify(aiResponse.results)}` }
+      );
 
       return {
         query,
         sql: aiResponse.sql,
         explanation: aiResponse.explanation,
-        results,
+        results: await this.executeSQL(aiResponse.sql),
         metadata: {
-          queryType: aiResponse.queryType,
-          timePeriod: aiResponse.timePeriod,
-          filters: aiResponse.filters,
-          matchedPatterns: matchingPrompts.map(p => p.description)
+          ...aiResponse.metadata,
+          conversationContext: this.getConversationContext()
         }
       };
     } catch (error) {
@@ -92,18 +103,14 @@ class BaseQueryService {
    * Generate SQL using OpenAI
    * @private
    */
-  static async generateSQL(query, { domain, schema, queryType, matchingPrompts }) {
+  static async generateSQL(messages, { domain, schema, queryType }) {
     console.log('💫 generateSQL started');
     
-    // Extract context from query if it's incomplete
-    const nameMatch = query.match(/by\s*$/i);
-    if (nameMatch) {
-      // Find the last complete query with a name
-      const lastNameMatch = query.match(/by\s+(\w+)/i);
-      if (lastNameMatch) {
-        query = query.replace(/by\s*$/, `by ${lastNameMatch[1]}`);
-      }
-    }
+    // Extract previous context from messages
+    const previousExchanges = messages
+      .slice(1, -1)  // Skip system message and current query
+      .map(m => `${m.role}: ${m.content}`)
+      .join('\n');
     
     const prompt = `
       Given this database schema: ${JSON.stringify(schema, null, 2)}
@@ -114,9 +121,12 @@ class BaseQueryService {
       - REQUIRED FORMAT: owner_name ILIKE '%name%'
       - EXAMPLE: owner_name ILIKE '%shannon%' NOT owner_name = 'shannon'
       
-      And these relevant query patterns: ${JSON.stringify(matchingPrompts, null, 2)}
+      Previous conversation:
+      ${previousExchanges}
       
-      Generate a SQL query to answer: "${query}"
+      And these relevant query patterns: ${JSON.stringify(this.findMatchingPrompts(messages[messages.length - 1].content, prompts.commonQueries), null, 2)}
+      
+      Generate a SQL query to answer: "${messages[messages.length - 1].content}"
       
       The query appears to be a ${queryType} type query.
       
@@ -127,6 +137,7 @@ class BaseQueryService {
       4. Include appropriate JOINs based on the schema relationships
       5. Handle NULL values appropriately
       6. ⚠️ ALWAYS use ILIKE for name searches, never use =
+      7. ⚠️ MAINTAIN CONTEXT from previous conversation (won/lost status, names, time periods)
       
       You MUST respond with ONLY a valid JSON object in this format:
       {
@@ -134,28 +145,15 @@ class BaseQueryService {
         "explanation": "BRIEF EXPLANATION OF WHAT THE QUERY DOES",
         "queryType": "${queryType}",
         "timePeriod": {"start": "ISO_DATE", "end": "ISO_DATE"},
-        "filters": ["LIST", "OF", "APPLIED", "FILTERS"]
+        "filters": ["LIST", "OF", "APPLIED", "FILTERS"],
+        "results": ["LIST", "OF", "RESULTS"]
       }
     `;
 
     console.log('🤖 Calling OpenAI');
     const completion = await openai.chat.completions.create({
       model: "gpt-4-turbo-preview",
-      messages: [
-        {
-          role: "system",
-          content: `You are a SQL expert specializing in ${domain} analytics. 
-          ⚠️ CRITICAL: 
-          1. ALWAYS use ILIKE with wildcards (%name%) for ANY name searches
-          2. NEVER use exact matches (=) for names
-          3. ALWAYS respond with ONLY valid JSON, no other text
-          4. Format numbers using SUM() or COUNT() appropriately`
-        },
-        {
-          role: "user",
-          content: prompt
-        }
-      ],
+      messages: messages,
       temperature: 0.3,  // Lower temperature for more consistent formatting
       response_format: { type: "json_object" }  // This requires gpt-4-turbo-preview
     });
@@ -260,6 +258,34 @@ class BaseQueryService {
     } finally {
       client.release();
     }
+  }
+
+  static getConversationContext() {
+    // Extract relevant context from conversation history
+    const context = {
+      dealStatus: null,
+      owner: null,
+      timePeriod: null
+    };
+
+    if (this.conversationHistory?.length > 0) {
+      // Analyze history to extract context
+      for (const message of this.conversationHistory) {
+        if (message.content.includes('is_won = FALSE')) {
+          context.dealStatus = 'lost';
+        } else if (message.content.includes('is_won = TRUE')) {
+          context.dealStatus = 'won';
+        }
+        
+        // Extract owner name from ILIKE patterns
+        const ownerMatch = message.content.match(/owner_name ILIKE '%([^%]+)%'/);
+        if (ownerMatch) {
+          context.owner = ownerMatch[1];
+        }
+      }
+    }
+
+    return context;
   }
 }
 

@@ -24,6 +24,7 @@ const SalesAnalytics = () => {
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [conversationContext, setConversationContext] = useState(null);
   
   // Initialize AICore as a ref so it persists between renders
   const aiCore = useRef(new AIInteractionCore());
@@ -47,104 +48,118 @@ const SalesAnalytics = () => {
     setQuery(example);
   };
 
-  // Handle query submission
+  // Handle query submission with context
   const onSubmit = async (event) => {
     event.preventDefault();
     setLoading(true);
     setError(null);
     
-    console.log('[SalesAnalytics] Submitting query:', query);
+    console.log('[SalesAnalytics] Submitting query with context:', {
+      query,
+      context: conversationContext
+    });
     
     try {
-      console.log('[SalesAnalytics] Calling AI Query Service...');
-      const response = await SalesAiQueryService.analyzeQuery(query, 'sales');
+      // Pass conversation history to the AI service
+      const history = aiCore.current.getHistory();
+      const response = await SalesAiQueryService.analyzeQuery(query, 'sales', {
+        conversationHistory: history,
+        currentContext: conversationContext
+      });
+      
       console.log('[SalesAnalytics] Query response received:', response);
       
-      // Add query to AI conversation history
+      // Update conversation context from response
+      setConversationContext(response.metadata?.conversationContext || null);
+      
+      // Add to AI conversation history
       aiCore.current.addToHistory('query', {
         text: query,
         timestamp: new Date(),
-        response: response
+        response: response,
+        context: response.metadata?.conversationContext
       });
 
-      // Generate AI suggestions based on the response
       const suggestions = await aiCore.current.analyzeResults(response);
       
       setResult({
         ...response,
-        suggestions // Add suggestions to result
+        suggestions
       });
     } catch (err) {
-      console.log('[SalesAnalytics] Query error:', err);
+      console.error('[SalesAnalytics] Query error:', err);
       setError(err.message);
     } finally {
-      console.log('[SalesAnalytics] Query processing completed');
       setLoading(false);
     }
   };
 
-  // Handle AI suggestion clicks
+  // Enhanced suggestion handling with context
   const onSuggestionClick = async (suggestion) => {
-    const lastQuery = aiCore.current.getHistory()[aiCore.current.getHistory().length - 2]?.data?.text || '';
+    const history = aiCore.current.getHistory();
+    const currentContext = history[history.length - 1]?.data?.context;
     
-    // Extract context (like names) from the last query
-    const nameMatch = lastQuery.match(/did\s+(\w+)\s+win/i);
-    const contextName = nameMatch ? nameMatch[1] : '';
-    
-    console.log('[SalesAnalytics] Last query:', lastQuery);
-    console.log('[SalesAnalytics] Extracted context:', contextName);
+    console.log('[SalesAnalytics] Processing suggestion with context:', {
+      suggestion,
+      context: currentContext
+    });
 
-    let followUpQuery = '';
-    switch (suggestion.type) {
-      case 'value_analysis':
-        followUpQuery = `Calculate total value of deals won by ${contextName}`;
-        break;
-      case 'time_analysis':
-        followUpQuery = `Show trend of deals won by ${contextName} over time`;
-        break;
-      case 'comparison':
-        followUpQuery = `Compare deals won by ${contextName} with other reps`;
-        break;
-      default:
-        followUpQuery = suggestion.text;
-    }
-
-    console.log('[SalesAnalytics] Generated follow-up query:', followUpQuery);
-    await submitQuery(followUpQuery);
+    let followUpQuery = generateFollowUpQuery(suggestion, currentContext);
+    await submitQuery(followUpQuery, currentContext);
   };
 
-  const submitQuery = async (queryText) => {
+  // Helper to generate context-aware follow-up queries
+  const generateFollowUpQuery = (suggestion, context) => {
+    const { dealStatus, owner } = context || {};
+    
+    console.log('[SalesAnalytics] Generating follow-up with context:', {
+      dealStatus,
+      owner
+    });
+
+    switch (suggestion.type) {
+      case 'value_analysis':
+        return `Calculate total value of deals ${dealStatus || 'won'} by ${owner || ''}`.trim();
+      case 'time_analysis':
+        return `Show trend of ${dealStatus || ''} deals ${owner ? `by ${owner}` : ''} over time`.trim();
+      case 'comparison':
+        return `Compare ${dealStatus || ''} deals ${owner ? `by ${owner}` : ''} with other reps`.trim();
+      default:
+        return suggestion.text;
+    }
+  };
+
+  // Enhanced query submission with context
+  const submitQuery = async (queryText, context) => {
     setLoading(true);
     setError(null);
     
     try {
-      console.log('[SalesAnalytics] Submitting query:', queryText);
-      const response = await SalesAiQueryService.analyzeQuery(queryText, 'sales');
-      console.log('[SalesAnalytics] Query response received:', response);
+      const history = aiCore.current.getHistory();
+      const response = await SalesAiQueryService.analyzeQuery(queryText, 'sales', {
+        conversationHistory: history,
+        currentContext: context
+      });
       
-      // Add to conversation history
+      setConversationContext(response.metadata?.conversationContext || null);
+      
       aiCore.current.addToHistory('query', {
         text: queryText,
         timestamp: new Date(),
-        response: response
+        response: response,
+        context: response.metadata?.conversationContext
       });
 
-      // Generate AI suggestions based on the response
       const suggestions = await aiCore.current.analyzeResults(response);
       
-      // Update UI with results
       setResult({
-        sql: response.sql,
-        explanation: response.explanation,
-        results: response.results,
-        suggestions: suggestions
+        ...response,
+        suggestions
       });
     } catch (error) {
-      console.log('[SalesAnalytics] Query error:', error);
       setError(error.message);
     } finally {
       setLoading(false);
-      console.log('[SalesAnalytics] Query processing completed');
     }
   };
 
@@ -237,6 +252,27 @@ const SalesAnalytics = () => {
         </Alert>
       )}
 
+      {/* Add Context Display */}
+      {conversationContext && (
+        <Paper sx={{ p: 2, mb: 2, bgcolor: 'grey.50' }}>
+          <Typography variant="subtitle2" color="text.secondary">
+            Current Context:
+          </Typography>
+          <Box sx={{ display: 'flex', gap: 2, mt: 1 }}>
+            {conversationContext.dealStatus && (
+              <Typography variant="body2">
+                Deal Status: <strong>{conversationContext.dealStatus}</strong>
+              </Typography>
+            )}
+            {conversationContext.owner && (
+              <Typography variant="body2">
+                Owner: <strong>{conversationContext.owner}</strong>
+              </Typography>
+            )}
+          </Box>
+        </Paper>
+      )}
+
       {/* Results Display */}
       {result && (
         <>
@@ -244,7 +280,8 @@ const SalesAnalytics = () => {
             data={result.results}
             metadata={{
               title: 'Query Results',
-              description: result.explanation
+              description: result.explanation,
+              context: conversationContext // Pass context to table
             }}
             sql={result.sql}
           />
@@ -253,6 +290,7 @@ const SalesAnalytics = () => {
             onSuggestionClick={onSuggestionClick}
             metadata={result.metadata}
             history={aiCore.current.getHistory()}
+            context={conversationContext} // Pass context to AI panel
             domain="sales"
           />
         </>
