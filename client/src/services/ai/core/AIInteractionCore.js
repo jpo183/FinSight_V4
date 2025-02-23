@@ -83,18 +83,24 @@ class AIInteractionCore {
     const patterns = [];
 
     try {
+      // Ensure we have results to analyze
+      if (!data || !data.results || !Array.isArray(data.results)) {
+        console.log('[AIInteractionCore] No valid results to analyze');
+        return patterns;
+      }
+
       // Check for temporal data
-      if (this.hasTemporalData(data)) {
+      if (this.hasTemporalData(data.results)) {
         patterns.push('temporal');
       }
 
       // Check for hierarchical data
-      if (this.hasHierarchicalData(data)) {
+      if (this.hasHierarchicalData(data.results)) {
         patterns.push('hierarchical');
       }
 
       // Check for numerical metrics
-      if (this.hasMetrics(data)) {
+      if (this.hasMetrics(data.results)) {
         patterns.push('metrics');
       }
 
@@ -128,9 +134,10 @@ class AIInteractionCore {
    * Check if data contains temporal elements
    * @private
    */
-  hasTemporalData(data) {
-    // Implementation for detecting date/time patterns
-    return data.some(item => 
+  hasTemporalData(results) {
+    if (!Array.isArray(results)) return false;
+    
+    return results.some(item => 
       Object.values(item).some(value => 
         value instanceof Date || 
         (typeof value === 'string' && !isNaN(Date.parse(value)))
@@ -142,9 +149,10 @@ class AIInteractionCore {
    * Check if data contains hierarchical elements
    * @private
    */
-  hasHierarchicalData(data) {
-    // Implementation for detecting hierarchical patterns
-    return data.some(item =>
+  hasHierarchicalData(results) {
+    if (!Array.isArray(results)) return false;
+
+    return results.some(item =>
       Object.keys(item).some(key => 
         key.includes('_id') || 
         key.includes('parent') || 
@@ -157,9 +165,10 @@ class AIInteractionCore {
    * Check if data contains numerical metrics
    * @private
    */
-  hasMetrics(data) {
-    // Implementation for detecting numerical metrics
-    return data.some(item =>
+  hasMetrics(results) {
+    if (!Array.isArray(results)) return false;
+
+    return results.some(item =>
       Object.values(item).some(value => 
         typeof value === 'number'
       )
