@@ -196,11 +196,24 @@ Given this database schema: ${JSON.stringify(schema, null, 2)}
 
 Previous Context: ${JSON.stringify(this.getConversationContext())}
 
-You MUST return responses in this exact JSON format:
+RESPONSE FORMAT:
+For standard queries:
 {
   "sql": string | null,
   "explanation": string | null,
-  "queryType": string | null,
+  "queryType": "standard",
+  "timePeriod": {"start": null, "end": null},
+  "filters": [],
+  "results": [],
+  "error": string | null
+}
+
+For analysis queries:
+{
+  "sql": string[] | null,  // Array of SQL queries
+  "metrics": string[] | null,  // Description of each metric
+  "explanation": string | null,
+  "queryType": "analysis",
   "timePeriod": {"start": null, "end": null},
   "filters": [],
   "results": [],
@@ -209,23 +222,13 @@ You MUST return responses in this exact JSON format:
 
 Remember: ALWAYS use ILIKE with wildcards for names (e.g., owner_name ILIKE '%shannon%')
 
-ANALYSIS RULES:
-1. For suggestion/analysis requests, return multiple SQL queries in an array
-2. Each query should focus on a specific metric:
-   - Win/loss ratio
-   - Average deal sizes (won vs lost)
-   - Sales cycle duration
-   - Industry success rates
-   - Common stages where deals are lost
-3. Format response as:
-{
-  "sql": string[] | null,  // Array of SQL queries
-  "metrics": string[] | null,  // Description of each metric
-  "explanation": string | null,
-  "queryType": "analysis",
-  "results": [],
-  "error": string | null
-}`
+ANALYSIS METRICS:
+When analyzing performance, include queries for:
+- Win/loss ratio
+- Average deal sizes (won vs lost)
+- Sales cycle duration
+- Industry success rates
+- Common stages where deals are lost`
     };
 
     const queryMessage = {
