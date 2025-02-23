@@ -129,15 +129,18 @@ class BaseQueryService {
       
       The query appears to be a ${queryType} type query.
       
-      ⚠️ YOU MUST RESPOND WITH THIS EXACT JSON STRUCTURE:
+      ⚠️ YOU MUST RESPOND WITH THIS EXACT JSON STRUCTURE (even if there's an error):
       {
         "sql": "YOUR SQL QUERY HERE",
         "explanation": "BRIEF EXPLANATION OF WHAT THE QUERY DOES",
         "queryType": "${queryType}",
         "timePeriod": {"start": "ISO_DATE", "end": "ISO_DATE"},
         "filters": ["LIST", "OF", "APPLIED", "FILTERS"],
-        "results": []
+        "results": [],
+        "error": null  // Include error message here if something goes wrong
       }
+      
+      If you encounter any issues, set the error field and provide empty/null values for other fields.
     `;
 
     console.log('🤖 Calling OpenAI');
@@ -147,7 +150,7 @@ class BaseQueryService {
         ...messages,
         {
           role: "system",
-          content: "You MUST respond with ONLY the exact JSON structure specified. No other text or explanation allowed."
+          content: "You MUST respond with ONLY the exact JSON structure specified, including error field if needed. No other text allowed."
         }
       ],
       temperature: 0.3,
@@ -160,6 +163,16 @@ class BaseQueryService {
     
     try {
       const response = JSON.parse(responseText);
+      
+      // Check if we have a valid response structure
+      if (!response.sql && !response.error) {
+        throw new Error('Response missing required fields');
+      }
+
+      // If there's an error in the response, throw it
+      if (response.error) {
+        throw new APIError(response.error, 400);
+      }
       
       console.log('🔍 Starting SQL transformation');
       console.log('📝 Original SQL:', response.sql);
