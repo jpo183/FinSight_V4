@@ -13,6 +13,9 @@ class AIInteractionCore {
     this.conversationHistory = [];
     this.currentContext = initialContext;
     this.interactionCount = 0;
+    this.history = [];
+    this.suggestions = [];
+    this.lastQuery = null;
   }
 
   /**
@@ -192,6 +195,40 @@ class AIInteractionCore {
   getHistory() {
     console.log('[AIInteractionCore] Getting conversation history');
     return this.conversationHistory;
+  }
+
+  getLastQuery() {
+    // Get the last query from history
+    const lastQueryItem = this.history.find(item => item.type === 'query');
+    return lastQueryItem?.data?.text || '';
+  }
+
+  analyzeResults(data) {
+    console.log('[AIInteractionCore] Analyzing results:', data);
+    
+    // Store the query
+    this.lastQuery = data.query;
+    
+    // Add to history
+    this.addToHistory('query', {
+      text: data.query,
+      timestamp: new Date(),
+      response: data
+    });
+
+    // Add results to history
+    this.addToHistory('results', {
+      query: data.query,
+      sql: data.sql,
+      explanation: data.explanation,
+      results: data.results,
+      metadata: data.metadata
+    });
+
+    // Generate suggestions
+    this.suggestions = this.generateSuggestions(data);
+    
+    return this.suggestions;
   }
 }
 

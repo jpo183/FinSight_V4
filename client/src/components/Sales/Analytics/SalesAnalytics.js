@@ -87,20 +87,21 @@ const SalesAnalytics = () => {
     
     // Generate appropriate follow-up query based on action type
     let followUpQuery = '';
-    const context = aiCore.getLastQuery(); // Get the last query for context
+    const lastQuery = aiCore.getLastQuery(); // Get the last query for context
+    const context = lastQuery.includes('shannon') ? 'shannon' : '';
     
     switch (suggestion.action) {
       case 'compare_reps':
-        followUpQuery = `compare sales rep performance with shannon`;
+        followUpQuery = `compare ${context}'s won deals with other sales reps`;
         break;
       case 'trend_analysis':
-        followUpQuery = `show monthly trend of shannon's won deals`;
+        followUpQuery = `show monthly trend of ${context}'s won deals`;
         break;
       case 'value_analysis':
-        followUpQuery = `what is the total value of shannon's won deals`;
+        followUpQuery = `what is the total value of ${context}'s won deals`;
         break;
       default:
-        followUpQuery = context;
+        followUpQuery = lastQuery;
     }
 
     // Submit the follow-up query
