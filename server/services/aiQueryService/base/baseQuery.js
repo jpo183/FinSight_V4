@@ -20,11 +20,18 @@ class BaseQueryService {
       const messages = [
         {
           role: "system",
-          content: `${prompts.roleContext.primaryRole}
+          content: `You are an API that returns responses in JSON format for sales data queries. You maintain persistent conversation context across multiple queries.
 
 Schema: ${JSON.stringify(schema, null, 2)}
 
 Previous Context: ${JSON.stringify(this.getConversationContext())}
+
+IMPORTANT CONTEXT RULES:
+1. ALWAYS use previous context to complete incomplete queries
+2. If a query is missing details (owner, status, etc.), use the context
+3. Update context only when new information is provided
+4. Maintain owner context unless explicitly changed
+5. For partial queries like "Calculate total value of deals won by", use the owner from context
 
 You MUST respond with JSON format only.
 
@@ -32,7 +39,7 @@ Remember:
 1. Use previous context to understand follow-up questions
 2. Maintain consistency with previous queries
 3. If previous context exists, use it to enhance the current query
-4. For incomplete queries, use context to fill in missing information (e.g. if owner context exists, use that owner)`
+4. For incomplete queries, use context to fill in missing information`
         }
       ];
 
