@@ -55,24 +55,53 @@ const SALES_PROMPTS = {
   contextRules: {
     dealStatus: {
       won: {
-        terms: ['won', 'closed won', 'successful', 'landed', 'closed successfully'],
+        terms: ['won', 'closed won', 'successful', 'closed', 'landed', 'closed successfully'],
         sqlCondition: 'is_won = TRUE',
         followUps: [
           'What is the total value of these won deals?',
           'When were these deals won?',
           'How does this win rate compare to other reps?'
-        ]
+        ],
+        contextMaintenance: {
+          valueQuery: 'SELECT SUM(d.amount) FROM deals d JOIN owners o ON d.owner_id = o.owner_id WHERE d.is_won = TRUE',
+          timeQuery: 'SELECT close_date, COUNT(*) FROM deals d JOIN owners o ON d.owner_id = o.owner_id WHERE d.is_won = TRUE',
+          comparisonQuery: 'SELECT o.owner_name, COUNT(*) FROM deals d JOIN owners o ON d.owner_id = o.owner_id WHERE d.is_won = TRUE'
+        }
       },
       lost: {
-        terms: ['lost', 'closed lost', 'unsuccessful', 'failed', 'dropped'],
+        terms: ['lost', 'lose', 'closed lost', 'unsuccessful', 'failed', 'dropped'],
         sqlCondition: 'is_won = FALSE',
         followUps: [
           'What is the total value of these lost deals?',
           'When were these deals lost?',
           'What stages did these lost deals reach?'
-        ]
+        ],
+        contextMaintenance: {
+          valueQuery: 'SELECT SUM(d.amount) FROM deals d JOIN owners o ON d.owner_id = o.owner_id WHERE d.is_won = FALSE',
+          timeQuery: 'SELECT close_date, COUNT(*) FROM deals d JOIN owners o ON d.owner_id = o.owner_id WHERE d.is_won = FALSE',
+          comparisonQuery: 'SELECT o.owner_name, COUNT(*) FROM deals d JOIN owners o ON d.owner_id = o.owner_id WHERE d.is_won = FALSE'
+        }
       }
-    }
+    },
+    conversationRules: [
+      'When analyzing deals for a specific status (won/lost), maintain that status in all follow-up queries',
+      'Keep the same is_won condition (TRUE/FALSE) when calculating values, trends, or comparisons',
+      'Preserve the original owner name in all follow-up queries',
+      'Use the same time period constraints across the conversation if specified',
+      'Maintain all relevant filters (status, owner, time period) unless explicitly changed by the user'
+    ],
+    examples: [
+      {
+        initial: "How many deals did Shannon lose?",
+        followUp: "What's the total value of these lost deals?",
+        context: { status: 'lost', owner: 'Shannon', maintain: ['is_won = FALSE', "owner_name ILIKE '%shannon%'"] }
+      },
+      {
+        initial: "Show deals won by John",
+        followUp: "What's the trend over time?",
+        context: { status: 'won', owner: 'John', maintain: ['is_won = TRUE', "owner_name ILIKE '%john%'"] }
+      }
+    ]
   },
 
   queryPatterns: {
@@ -119,6 +148,28 @@ const SALES_PROMPTS = {
       ],
       metricColumns: ['amount', 'acv', 'arr', 'mrr', 'stage_probability']
     }
+  },
+
+  roleContext: {
+    primaryRole: "You are a Sales Operations Director and CFO with deep expertise in sales analytics.",
+    responsibilities: [
+      "Track and analyze sales performance metrics",
+      "Monitor deal pipeline and revenue forecasting",
+      "Understand win/loss patterns and their financial impact",
+      "Analyze sales rep performance and deal ownership"
+    ],
+    contextualKnowledge: [
+      "Lost deals are as important as won deals for analysis",
+      "Deal ownership transitions affect pipeline metrics",
+      "Deal stages indicate probability of closing",
+      "Historical patterns predict future performance"
+    ],
+    conversationStyle: [
+      "Maintain context of won/lost status throughout analysis",
+      "Consider both sales and financial implications",
+      "Track ownership and accountability in responses",
+      "Preserve historical context for trend analysis"
+    ]
   }
 };
 
