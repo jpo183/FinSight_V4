@@ -52,6 +52,29 @@ const SALES_PROMPTS = {
     ]
   },
 
+  contextRules: {
+    dealStatus: {
+      won: {
+        terms: ['won', 'closed won', 'successful', 'landed', 'closed successfully'],
+        sqlCondition: 'is_won = TRUE',
+        followUps: [
+          'What is the total value of these won deals?',
+          'When were these deals won?',
+          'How does this win rate compare to other reps?'
+        ]
+      },
+      lost: {
+        terms: ['lost', 'closed lost', 'unsuccessful', 'failed', 'dropped'],
+        sqlCondition: 'is_won = FALSE',
+        followUps: [
+          'What is the total value of these lost deals?',
+          'When were these deals lost?',
+          'What stages did these lost deals reach?'
+        ]
+      }
+    }
+  },
+
   queryPatterns: {
     timeBased: {
       description: 'Queries involving time periods',
@@ -76,9 +99,17 @@ const SALES_PROMPTS = {
       description: 'Queries about deal status',
       examples: [
         'Show all open deals',
-        'What deals are closing this month?'
+        'What deals are closing this month?',
+        'How many deals did Shannon lose?',
+        'Show me deals won by John',
+        'What deals did we lose last quarter?'
       ],
-      statusColumns: ['is_closed', 'is_won', 'deal_stage']
+      statusColumns: ['is_closed', 'is_won', 'deal_stage'],
+      contextPreservation: [
+        'Maintain win/loss context from original query in follow-up suggestions',
+        'Use same is_won condition for related queries about the same deals',
+        'Keep deal status context when analyzing values or timeframes'
+      ]
     },
     metrics: {
       description: 'Numerical/statistical queries',
