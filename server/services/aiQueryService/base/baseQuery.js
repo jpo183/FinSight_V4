@@ -31,7 +31,8 @@ You MUST respond with JSON format only.
 Remember:
 1. Use previous context to understand follow-up questions
 2. Maintain consistency with previous queries
-3. If previous context exists, use it to enhance the current query`
+3. If previous context exists, use it to enhance the current query
+4. For incomplete queries, use context to fill in missing information (e.g. if owner context exists, use that owner)`
         }
       ];
 
@@ -59,6 +60,27 @@ Remember:
         prompts
       });
 
+      // If AI returns an error, return it without trying to execute SQL
+      if (aiResponse.error) {
+        console.log('⚠️ AI returned error:', aiResponse.error);
+        return {
+          query,
+          sql: null,
+          explanation: aiResponse.error,
+          results: [],
+          metadata: {
+            conversationContext: this.getConversationContext()
+          }
+        };
+      }
+
+      // Only try to execute SQL if we have it
+      let results = [];
+      if (aiResponse.sql) {
+        console.log('✨ Executing SQL:', aiResponse.sql);
+        results = await this.executeSQL(aiResponse.sql);
+      }
+
       // Store this exchange in conversation history
       console.log('💾 Updating conversation history');
       this.conversationHistory = this.conversationHistory || [];
@@ -67,13 +89,13 @@ Remember:
           role: "user", 
           content: query,
           timestamp: new Date().toISOString(),
-          context: this.getConversationContext()  // Store context with query
+          context: this.getConversationContext()
         },
         { 
           role: "assistant", 
           content: JSON.stringify({
             sql: aiResponse.sql,
-            results: aiResponse.results,
+            results: results,
             context: this.getConversationContext()
           }),
           timestamp: new Date().toISOString()
@@ -86,7 +108,7 @@ Remember:
         query,
         sql: aiResponse.sql,
         explanation: aiResponse.explanation,
-        results: await this.executeSQL(aiResponse.sql),
+        results: results,
         metadata: {
           ...aiResponse.metadata,
           conversationContext: this.getConversationContext()
