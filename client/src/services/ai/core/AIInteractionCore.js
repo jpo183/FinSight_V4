@@ -51,26 +51,53 @@ class AIInteractionCore {
     
     const suggestions = [];
     
-    // Check if this is a count query about a person
-    if (data.sql?.toLowerCase().includes('count') && 
-        data.sql?.toLowerCase().includes('owner_name')) {
-      suggestions.push({
-        type: 'comparison',
-        text: 'Would you like to compare with other sales reps?',
-        action: 'compare_reps'
-      });
-      
+    // Handle analysis queries
+    if (data.queryType === 'analysis') {
+      // Add analysis-specific suggestions
       suggestions.push({
         type: 'time_analysis',
-        text: 'Would you like to see how this changed over time?',
+        text: 'Would you like to see how these metrics trend over time?',
         action: 'trend_analysis'
       });
       
       suggestions.push({
-        type: 'value_analysis',
-        text: 'Would you like to see the total value of these deals?',
-        action: 'value_analysis'
+        type: 'comparison',
+        text: 'Would you like to compare with team averages?',
+        action: 'team_comparison'
       });
+
+      // If we have deal stages, suggest stage-specific analysis
+      if (data.results.some(r => r.metric?.toLowerCase().includes('stage'))) {
+        suggestions.push({
+          type: 'stage_analysis',
+          text: 'Would you like to analyze conversion rates between stages?',
+          action: 'stage_analysis'
+        });
+      }
+    } else {
+      // Handle single queries (existing logic)
+      const sqlString = Array.isArray(data.sql) ? data.sql[0] : data.sql;
+      
+      if (sqlString?.toLowerCase().includes('count') && 
+          sqlString?.toLowerCase().includes('owner_name')) {
+        suggestions.push({
+          type: 'comparison',
+          text: 'Would you like to compare with other sales reps?',
+          action: 'compare_reps'
+        });
+        
+        suggestions.push({
+          type: 'time_analysis',
+          text: 'Would you like to see how this changed over time?',
+          action: 'trend_analysis'
+        });
+        
+        suggestions.push({
+          type: 'value_analysis',
+          text: 'Would you like to see the total value of these deals?',
+          action: 'value_analysis'
+        });
+      }
     }
 
     console.log('[AIInteractionCore] Generated suggestions:', suggestions);
