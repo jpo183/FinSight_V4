@@ -130,7 +130,7 @@ class BaseQueryService {
 
     console.log('🤖 Calling OpenAI');
     const completion = await openai.chat.completions.create({
-      model: "gpt-4",
+      model: "gpt-4-turbo-preview",
       messages: [
         {
           role: "system",
@@ -147,7 +147,7 @@ class BaseQueryService {
         }
       ],
       temperature: 0.3,  // Lower temperature for more consistent formatting
-      response_format: { type: "json_object" }  // Add this line to force JSON
+      response_format: { type: "json_object" }  // This requires gpt-4-turbo-preview
     });
 
     console.log('📥 Received OpenAI response');
