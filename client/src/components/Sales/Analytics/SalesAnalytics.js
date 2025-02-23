@@ -84,37 +84,32 @@ const SalesAnalytics = () => {
   };
 
   // Handle AI suggestion clicks
-  const handleSuggestionClick = async (suggestion) => {
-    console.log('[SalesAnalytics] AI suggestion clicked:', suggestion);
+  const onSuggestionClick = async (suggestion) => {
+    const lastQuery = aiCore.current.getHistory()[aiCore.current.getHistory().length - 2]?.data?.text || '';
     
-    // Get the last query and extract context
-    const lastQuery = aiCore.current.getLastQuery();
+    // Extract context (like names) from the last query
+    const nameMatch = lastQuery.match(/did\s+(\w+)\s+win/i);
+    const contextName = nameMatch ? nameMatch[1] : '';
+    
     console.log('[SalesAnalytics] Last query:', lastQuery);
-    
-    // Extract name from last query using similar pattern to backend
-    const nameMatch = lastQuery.match(/(?:about |for |did |by )(\w+)(?:'s|\s|$)/i);
-    const context = nameMatch ? nameMatch[1].toLowerCase() : '';
-    console.log('[SalesAnalytics] Extracted context:', context);
-    
-    // Generate appropriate follow-up query based on action type
+    console.log('[SalesAnalytics] Extracted context:', contextName);
+
     let followUpQuery = '';
-    switch (suggestion.action) {
-      case 'compare_reps':
-        followUpQuery = `Compare sales performance between ${context} and other reps`;
-        break;
-      case 'trend_analysis':
-        followUpQuery = `Show monthly trend of deals won by ${context}`;
-        break;
+    switch (suggestion.type) {
       case 'value_analysis':
-        followUpQuery = `Calculate total value of deals won by ${context}`;
+        followUpQuery = `Calculate total value of deals won by ${contextName}`;
+        break;
+      case 'time_analysis':
+        followUpQuery = `Show trend of deals won by ${contextName} over time`;
+        break;
+      case 'comparison':
+        followUpQuery = `Compare deals won by ${contextName} with other reps`;
         break;
       default:
-        followUpQuery = lastQuery;
+        followUpQuery = suggestion.text;
     }
 
     console.log('[SalesAnalytics] Generated follow-up query:', followUpQuery);
-    
-    // Submit the follow-up query
     await submitQuery(followUpQuery);
   };
 
@@ -255,7 +250,7 @@ const SalesAnalytics = () => {
           />
           <AIInteractionPanel
             suggestions={result.suggestions || []}
-            onSuggestionClick={handleSuggestionClick}
+            onSuggestionClick={onSuggestionClick}
             metadata={result.metadata}
             history={aiCore.current.getHistory()}
             domain="sales"

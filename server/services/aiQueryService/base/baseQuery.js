@@ -95,6 +95,16 @@ class BaseQueryService {
   static async generateSQL(query, { domain, schema, queryType, matchingPrompts }) {
     console.log('💫 generateSQL started');
     
+    // Extract context from query if it's incomplete
+    const nameMatch = query.match(/by\s*$/i);
+    if (nameMatch) {
+      // Find the last complete query with a name
+      const lastNameMatch = query.match(/by\s+(\w+)/i);
+      if (lastNameMatch) {
+        query = query.replace(/by\s*$/, `by ${lastNameMatch[1]}`);
+      }
+    }
+    
     const prompt = `
       Given this database schema: ${JSON.stringify(schema, null, 2)}
       
