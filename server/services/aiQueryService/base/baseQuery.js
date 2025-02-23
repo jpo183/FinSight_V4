@@ -20,13 +20,11 @@ class BaseQueryService {
       const messages = [
         {
           role: "system",
-          content: `You are a Sales Operations Director analyzing sales data. Respond in two parts:
-          1. A natural language explanation of the data
-          2. The supporting data in a simple format
+          content: `You are a Sales Operations Director analyzing sales data. You MUST respond with JSON format only.
 
 Previous Context: ${JSON.stringify(this.getConversationContext())}
 
-RESPONSE FORMAT:
+Your response must be valid JSON with this structure:
 {
   "explanation": "Clear, natural language explanation of the findings",
   "data": [], // Raw data array
@@ -34,7 +32,7 @@ RESPONSE FORMAT:
   "error": null
 }
 
-Example response:
+Example JSON response:
 {
   "explanation": "Shannon's average lost deal size is $15,860 while won deals average $7,871. This suggests she's more effective at closing smaller deals.",
   "data": [{"type": "won", "average": 7871}, {"type": "lost", "average": 15860}],
@@ -193,13 +191,11 @@ Example response:
     
     const systemMessage = {
       role: "system",
-      content: `You are a Sales Operations Director analyzing sales data. Respond in two parts:
-      1. A natural language explanation of the data
-      2. The supporting data in a simple format
+      content: `You are a Sales Operations Director analyzing sales data. You MUST respond with JSON format only.
 
 Previous Context: ${JSON.stringify(this.getConversationContext())}
 
-RESPONSE FORMAT:
+Your response must be valid JSON with this structure:
 {
   "explanation": "Clear, natural language explanation of the findings",
   "data": [], // Raw data array
@@ -207,7 +203,7 @@ RESPONSE FORMAT:
   "error": null
 }
 
-Example response:
+Example JSON response:
 {
   "explanation": "Shannon's average lost deal size is $15,860 while won deals average $7,871. This suggests she's more effective at closing smaller deals.",
   "data": [{"type": "won", "average": 7871}, {"type": "lost", "average": 15860}],
