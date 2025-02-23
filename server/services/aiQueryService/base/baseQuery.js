@@ -281,39 +281,38 @@ When analyzing performance, include queries for:
         };
       }
       
-      // Only proceed with SQL transformation if we have SQL
+      // Handle SQL transformation for both single queries and arrays
       if (response.sql) {
         console.log('🔍 Starting SQL transformation');
         console.log('📝 Original SQL:', response.sql);
         
-        // Define name fields that should use ILIKE
-        const nameFields = [
-          'owner_name',
-          'contact_name',
-          'company_name',
-        ];
+        const nameFields = ['owner_name', 'contact_name', 'company_name'];
         
-        nameFields.forEach(field => {
-          console.log(`\n🔎 Processing field: ${field}`);
-          const pattern = new RegExp(`((?:\\w+\\.)?)${field}\\s*=\\s*'([^']+)'`, 'gi');
-          
-          // Test if pattern matches before replacement
-          const matches = response.sql.match(pattern);
-          console.log('🔍 Pattern matches:', matches);
-          
-          response.sql = response.sql.replace(pattern, (match, alias, value) => {
-            console.log(`✨ Found match: "${match}"`);
-            console.log(`📌 Table alias: "${alias || 'none'}"`);
-            console.log(`📌 Search value: "${value}"`);
-            
-            const searchTerms = value.toLowerCase().trim().split(/\s+/);
-            const conditions = searchTerms.map(term => `${alias}${field} ILIKE '%${term}%'`);
-            
-            const result = `(${conditions.join(' OR ')})`;
-            console.log(`🔄 Transformed to: ${result}`);
-            return result;
+        if (Array.isArray(response.sql)) {
+          // Handle array of queries
+          response.sql = response.sql.map(query => {
+            let transformedQuery = query;
+            nameFields.forEach(field => {
+              const pattern = new RegExp(`((?:\\w+\\.)?)${field}\\s*=\\s*'([^']+)'`, 'gi');
+              transformedQuery = transformedQuery.replace(pattern, (match, alias, value) => {
+                const searchTerms = value.toLowerCase().trim().split(/\s+/);
+                const conditions = searchTerms.map(term => `${alias}${field} ILIKE '%${term}%'`);
+                return `(${conditions.join(' OR ')})`;
+              });
+            });
+            return transformedQuery;
           });
-        });
+        } else {
+          // Handle single query (existing logic)
+          nameFields.forEach(field => {
+            const pattern = new RegExp(`((?:\\w+\\.)?)${field}\\s*=\\s*'([^']+)'`, 'gi');
+            response.sql = response.sql.replace(pattern, (match, alias, value) => {
+              const searchTerms = value.toLowerCase().trim().split(/\s+/);
+              const conditions = searchTerms.map(term => `${alias}${field} ILIKE '%${term}%'`);
+              return `(${conditions.join(' OR ')})`;
+            });
+          });
+        }
 
         console.log('\n📝 Final SQL:', response.sql);
       }
