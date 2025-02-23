@@ -190,13 +190,31 @@ const SalesAnalytics = () => {
   const transformResultsData = (results) => {
     console.log('[SalesAnalytics] Transforming raw results:', results);
     
-    const transformed = results.map(item => ({
-      Metric: item.metric,
-      Value: Object.values(item.data)[0]
-    }));
-    
-    console.log('[SalesAnalytics] Transformed results:', transformed);
-    return transformed;
+    return results.map(item => {
+      // Extract the first value from data object
+      const rawValue = Object.values(item.data)[0];
+      
+      // Format based on metric type
+      let formattedValue = rawValue;
+      
+      if (item.metric.includes('duration')) {
+        formattedValue = `${Math.round(rawValue)} days`;
+      } else if (item.metric.includes('deals')) {
+        const count = item.data.count || rawValue;
+        const avg = item.data.average;
+        formattedValue = avg ? 
+          `${count} deals, avg ${new Intl.NumberFormat('en-US', {
+            style: 'currency',
+            currency: 'USD'
+          }).format(avg)}` :
+          `${count} deals`;
+      }
+      
+      return {
+        Metric: item.metric,
+        Value: formattedValue
+      };
+    });
   };
 
   return (
