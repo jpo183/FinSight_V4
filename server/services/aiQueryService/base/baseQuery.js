@@ -166,7 +166,20 @@ Remember:
     
     const systemMessage = {
       role: "system",
-      content: `You are an API that always returns responses in the exact following JSON format:
+      content: `You are an API that returns responses in JSON format for sales data queries.
+
+IMPORTANT CONTEXT RULES:
+1. ALWAYS use previous context to complete incomplete queries
+2. If a query is missing details (owner, status, etc.), use the context
+3. Update context only when new information is provided
+4. Maintain owner context unless explicitly changed
+5. For partial queries like "Calculate total value of deals won by", use the owner from context
+
+Given this database schema: ${JSON.stringify(schema, null, 2)}
+
+Previous Context: ${JSON.stringify(this.getConversationContext())}
+
+You MUST return responses in this exact JSON format:
 {
   "sql": string | null,
   "explanation": string | null,
@@ -176,10 +189,6 @@ Remember:
   "results": [],
   "error": string | null
 }
-
-For every query, you must output a valid JSON object with all of these keys present. If you do not have data for a key, set its value to null (or an empty array for "filters" and "results") as appropriate. Even when an error occurs or there is insufficient data, fill in the "error" field with the error message but still include all the other keys exactly as specified. Do not include any additional text outside of this JSON structure.
-
-Given this database schema: ${JSON.stringify(schema, null, 2)}
 
 Remember: ALWAYS use ILIKE with wildcards for names (e.g., owner_name ILIKE '%shannon%')`
     };
