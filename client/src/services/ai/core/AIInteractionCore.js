@@ -47,25 +47,26 @@ class AIInteractionCore {
     console.log('[AIInteractionCore] Generating suggestions for data:', data);
     
     const suggestions = [];
-    const patterns = this.detectDataPatterns(data);
     
-    console.log('[AIInteractionCore] Detected patterns:', patterns);
-
-    // Add time-based suggestions if applicable
-    if (patterns.includes('temporal')) {
+    // Check if this is a count query about a person
+    if (data.sql?.toLowerCase().includes('count') && 
+        data.sql?.toLowerCase().includes('owner_name')) {
       suggestions.push({
-        type: 'time_comparison',
-        text: 'Would you like to see how this compares to previous periods?',
-        action: 'compare_time_periods'
+        type: 'comparison',
+        text: 'Would you like to compare with other sales reps?',
+        action: 'compare_reps'
       });
-    }
-
-    // Add drill-down suggestions if data has hierarchy
-    if (patterns.includes('hierarchical')) {
+      
       suggestions.push({
-        type: 'drill_down',
-        text: 'Would you like to see more detailed breakdown?',
-        action: 'drill_down'
+        type: 'time_analysis',
+        text: 'Would you like to see how this changed over time?',
+        action: 'trend_analysis'
+      });
+      
+      suggestions.push({
+        type: 'value_analysis',
+        text: 'Would you like to see the total value of these deals?',
+        action: 'value_analysis'
       });
     }
 

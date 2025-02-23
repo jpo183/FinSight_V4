@@ -133,9 +133,9 @@ const AIInteractionPanel = ({
                   Query Type: {metadata.queryType}
                 </Typography>
               )}
-              {metadata.timePeriod && (
+              {metadata?.timePeriod && (
                 <Typography variant="caption">
-                  Time Period: {metadata.timePeriod}
+                  Time Period: {metadata.timePeriod.start || 'All time'}
                 </Typography>
               )}
             </Stack>
