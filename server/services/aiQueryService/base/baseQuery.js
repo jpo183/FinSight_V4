@@ -36,7 +36,8 @@ class BaseQueryService {
       const aiResponse = await this.generateSQL(messages, {
         domain,
         schema,
-        queryType: this.detectQueryType(query, prompts.queryPatterns)
+        queryType: this.detectQueryType(query, prompts.queryPatterns),
+        prompts
       });
 
       // Store this exchange in conversation history
@@ -103,7 +104,7 @@ class BaseQueryService {
    * Generate SQL using OpenAI
    * @private
    */
-  static async generateSQL(messages, { domain, schema, queryType }) {
+  static async generateSQL(messages, { domain, schema, queryType, prompts }) {
     console.log('💫 generateSQL started');
     
     // Extract previous context from messages
@@ -124,7 +125,7 @@ class BaseQueryService {
       Previous conversation:
       ${previousExchanges}
       
-      And these relevant query patterns: ${JSON.stringify(this.findMatchingPrompts(messages[messages.length - 1].content, prompts.commonQueries), null, 2)}
+      And these relevant query patterns: ${JSON.stringify(this.findMatchingPrompts(messages[messages.length - 1].content, prompts?.commonQueries || []), null, 2)}
       
       Generate a SQL query to answer: "${messages[messages.length - 1].content}"
       
