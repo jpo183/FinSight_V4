@@ -13,23 +13,23 @@ class BaseQueryService {
    */
   static async processQuery(query, { domain, schema, prompts }) {
     try {
-      // Build conversation history
+      // Build conversation history with JSON requirement
       const messages = [
         {
           role: "system",
-          content: `${prompts.roleContext.primaryRole}\n\nSchema: ${JSON.stringify(schema, null, 2)}`
+          content: `${prompts.roleContext.primaryRole}\n\nSchema: ${JSON.stringify(schema, null, 2)}\n\nYou MUST respond with JSON format only.`
         }
       ];
 
       // Add conversation history if it exists
       if (this.conversationHistory?.length > 0) {
-        messages.push(...this.conversationHistory.slice(-5)); // Keep last 5 exchanges
+        messages.push(...this.conversationHistory.slice(-5));
       }
 
       // Add current query
       messages.push({
         role: "user",
-        content: query
+        content: `Analyze this query and respond with JSON: ${query}`
       });
 
       // Generate SQL using OpenAI with conversation context
