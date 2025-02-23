@@ -125,38 +125,33 @@ class BaseQueryService {
       Previous conversation:
       ${previousExchanges}
       
-      And these relevant query patterns: ${JSON.stringify(this.findMatchingPrompts(messages[messages.length - 1].content, prompts?.commonQueries || []), null, 2)}
-      
       Generate a SQL query to answer: "${messages[messages.length - 1].content}"
       
       The query appears to be a ${queryType} type query.
       
-      Requirements:
-      1. Use the provided SQL patterns if they match the query intent
-      2. Ensure the query is safe and injection-free
-      3. Use proper table aliases
-      4. Include appropriate JOINs based on the schema relationships
-      5. Handle NULL values appropriately
-      6. ⚠️ ALWAYS use ILIKE for name searches, never use =
-      7. ⚠️ MAINTAIN CONTEXT from previous conversation (won/lost status, names, time periods)
-      
-      You MUST respond with ONLY a valid JSON object in this format:
+      ⚠️ YOU MUST RESPOND WITH THIS EXACT JSON STRUCTURE:
       {
-        "sql": "THE SQL QUERY",
+        "sql": "YOUR SQL QUERY HERE",
         "explanation": "BRIEF EXPLANATION OF WHAT THE QUERY DOES",
         "queryType": "${queryType}",
         "timePeriod": {"start": "ISO_DATE", "end": "ISO_DATE"},
         "filters": ["LIST", "OF", "APPLIED", "FILTERS"],
-        "results": ["LIST", "OF", "RESULTS"]
+        "results": []
       }
     `;
 
     console.log('🤖 Calling OpenAI');
     const completion = await openai.chat.completions.create({
       model: "gpt-4-turbo-preview",
-      messages: messages,
-      temperature: 0.3,  // Lower temperature for more consistent formatting
-      response_format: { type: "json_object" }  // This requires gpt-4-turbo-preview
+      messages: [
+        ...messages,
+        {
+          role: "system",
+          content: "You MUST respond with ONLY the exact JSON structure specified. No other text or explanation allowed."
+        }
+      ],
+      temperature: 0.3,
+      response_format: { type: "json_object" }
     });
 
     console.log('📥 Received OpenAI response');
