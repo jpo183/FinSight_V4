@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Box, 
   TextField, 
@@ -24,7 +24,9 @@ const SalesAnalytics = () => {
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [aiCore] = useState(() => new AIInteractionCore());
+  
+  // Initialize AICore as a ref so it persists between renders
+  const aiCore = useRef(new AIInteractionCore());
 
   // Log component mount
   useEffect(() => {
@@ -59,14 +61,14 @@ const SalesAnalytics = () => {
       console.log('[SalesAnalytics] Query response received:', response);
       
       // Add query to AI conversation history
-      aiCore.addToHistory('query', {
+      aiCore.current.addToHistory('query', {
         text: query,
         timestamp: new Date(),
         response: response
       });
 
       // Generate AI suggestions based on the response
-      const suggestions = await aiCore.analyzeResults(response);
+      const suggestions = await aiCore.current.analyzeResults(response);
       
       setResult({
         ...response,
@@ -87,7 +89,7 @@ const SalesAnalytics = () => {
     
     // Generate appropriate follow-up query based on action type
     let followUpQuery = '';
-    const lastQuery = aiCore.getLastQuery(); // Get the last query for context
+    const lastQuery = aiCore.current.getLastQuery(); // Use .current to access the instance
     const context = lastQuery.includes('shannon') ? 'shannon' : '';
     
     switch (suggestion.action) {
@@ -118,14 +120,14 @@ const SalesAnalytics = () => {
       console.log('[SalesAnalytics] Query response received:', response);
       
       // Add to conversation history
-      aiCore.addToHistory('query', {
+      aiCore.current.addToHistory('query', {
         text: queryText,
         timestamp: new Date(),
         response: response
       });
 
       // Generate AI suggestions based on the response
-      const suggestions = await aiCore.analyzeResults(response);
+      const suggestions = await aiCore.current.analyzeResults(response);
       
       // Update UI with results
       setResult({
@@ -247,7 +249,7 @@ const SalesAnalytics = () => {
             suggestions={result.suggestions || []}
             onSuggestionClick={handleSuggestionClick}
             metadata={result.metadata}
-            history={aiCore.getHistory()}
+            history={aiCore.current.getHistory()}
             domain="sales"
           />
         </>
