@@ -175,6 +175,11 @@ IMPORTANT CONTEXT RULES:
 4. Maintain owner context unless explicitly changed
 5. For partial queries like "Calculate total value of deals won by", use the owner from context
 
+SQL RULES:
+1. When ordering by amount, ALWAYS include "AND amount IS NOT NULL"
+2. When using MAX(amount), use COALESCE(amount, 0) to handle nulls
+3. For deal lookups, exclude null amounts with "AND amount IS NOT NULL"
+
 Given this database schema: ${JSON.stringify(schema, null, 2)}
 
 Previous Context: ${JSON.stringify(this.getConversationContext())}
