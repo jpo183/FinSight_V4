@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Box, 
   TextField, 
@@ -21,13 +21,13 @@ import AIInteractionCore from '../../../services/ai/core/AIInteractionCore';
 
 const SalesAnalytics = () => {
   const [query, setQuery] = useState('');
+  const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [result, setResult] = useState(null);
   const [aiCore] = useState(() => new AIInteractionCore());
 
   // Log component mount
-  React.useEffect(() => {
+  useEffect(() => {
     console.log('[SalesAnalytics] Component mounted');
     return () => console.log('[SalesAnalytics] Component unmounted');
   }, []);
@@ -46,21 +46,34 @@ const SalesAnalytics = () => {
   };
 
   // Handle query submission
-  const handleQuerySubmit = async (e) => {
-    e.preventDefault();
-    console.log('[SalesAnalytics] Submitting query:', query);
-    
+  const onSubmit = async (event) => {
+    event.preventDefault();
     setLoading(true);
     setError(null);
     
+    console.log('[SalesAnalytics] Submitting query:', query);
+    
     try {
       console.log('[SalesAnalytics] Calling AI Query Service...');
-      const response = await SalesAiQueryService.analyzeQuery(query);
+      const response = await SalesAiQueryService.analyzeQuery(query, 'sales');
       console.log('[SalesAnalytics] Query response received:', response);
       
-      setResult(response);
+      // Add query to AI conversation history
+      aiCore.addToHistory('query', {
+        text: query,
+        timestamp: new Date(),
+        response: response
+      });
+
+      // Generate AI suggestions based on the response
+      const suggestions = await aiCore.analyzeResults(response);
+      
+      setResult({
+        ...response,
+        suggestions // Add suggestions to result
+      });
     } catch (err) {
-      console.error('[SalesAnalytics] Query error:', err);
+      console.log('[SalesAnalytics] Query error:', err);
       setError(err.message);
     } finally {
       console.log('[SalesAnalytics] Query processing completed');
@@ -71,23 +84,27 @@ const SalesAnalytics = () => {
   // Handle AI suggestion clicks
   const handleSuggestionClick = async (suggestion) => {
     console.log('[SalesAnalytics] AI suggestion clicked:', suggestion);
-    // Handle the suggestion action
+    if (suggestion.action) {
+      // Handle suggestion action
+      setQuery(suggestion.text);
+      onSubmit({ preventDefault: () => {} }); // Trigger new query
+    }
   };
 
   // Log state changes
-  React.useEffect(() => {
+  useEffect(() => {
     if (loading) {
       console.log('[SalesAnalytics] Loading state:', loading);
     }
   }, [loading]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (error) {
       console.log('[SalesAnalytics] Error state:', error);
     }
   }, [error]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (result) {
       console.log('[SalesAnalytics] Result state updated:', {
         sql: result.sql,
@@ -106,7 +123,7 @@ const SalesAnalytics = () => {
       {/* Query Input */}
       <Paper 
         component="form" 
-        onSubmit={handleQuerySubmit}
+        onSubmit={onSubmit}
         sx={{ p: 3, mb: 3 }}
       >
         <Typography variant="h6" gutterBottom>
@@ -168,11 +185,14 @@ const SalesAnalytics = () => {
         <>
           <ResultsTable 
             data={result.results}
-            metadata={result.metadata}
+            metadata={{
+              title: 'Query Results',
+              description: result.explanation
+            }}
             sql={result.sql}
           />
           <AIInteractionPanel
-            suggestions={result.suggestions}
+            suggestions={result.suggestions || []}
             onSuggestionClick={handleSuggestionClick}
             metadata={result.metadata}
             history={aiCore.getHistory()}
