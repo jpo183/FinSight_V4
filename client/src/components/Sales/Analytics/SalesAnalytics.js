@@ -16,12 +16,15 @@ import SendIcon from '@mui/icons-material/Send';
 import SalesAiQueryService from '../../../services/sales/aiQueryService';
 import ResultsTable from '../../Common/DataTable/ResultsTable';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import AIInteractionPanel from '../../Common/AI/AIInteractionPanel';
+import AIInteractionCore from '../../../services/ai/core/AIInteractionCore';
 
 const SalesAnalytics = () => {
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [result, setResult] = useState(null);
+  const [aiCore] = useState(() => new AIInteractionCore());
 
   // Log component mount
   React.useEffect(() => {
@@ -63,6 +66,12 @@ const SalesAnalytics = () => {
       console.log('[SalesAnalytics] Query processing completed');
       setLoading(false);
     }
+  };
+
+  // Handle AI suggestion clicks
+  const handleSuggestionClick = async (suggestion) => {
+    console.log('[SalesAnalytics] AI suggestion clicked:', suggestion);
+    // Handle the suggestion action
   };
 
   // Log state changes
@@ -156,33 +165,20 @@ const SalesAnalytics = () => {
 
       {/* Results Display */}
       {result && (
-        <Paper sx={{ p: 3 }}>
-          <Typography variant="h6" gutterBottom>
-            Results
-          </Typography>
-          <Divider sx={{ mb: 2 }} />
-          
-          {/* Explanation */}
-          <Typography variant="subtitle2" color="text.secondary">
-            Explanation:
-          </Typography>
-          <Typography paragraph>
-            {result.explanation}
-          </Typography>
-
-          {/* Results Table */}
-          <Typography variant="subtitle2" color="text.secondary">
-            Data:
-          </Typography>
+        <>
           <ResultsTable 
             data={result.results}
-            metadata={{
-              title: 'Query Results',
-              description: result.explanation
-            }}
+            metadata={result.metadata}
             sql={result.sql}
           />
-        </Paper>
+          <AIInteractionPanel
+            suggestions={result.suggestions}
+            onSuggestionClick={handleSuggestionClick}
+            metadata={result.metadata}
+            history={aiCore.getHistory()}
+            domain="sales"
+          />
+        </>
       )}
     </Box>
   );
