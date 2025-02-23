@@ -193,7 +193,7 @@ const SalesAnalytics = () => {
     return results.map(item => {
       const rawValue = Object.values(item.data)[0];
       
-      // Only add "deals" suffix for count metrics
+      // Handle count metrics
       if (item.metric.includes('Total number of')) {
         return {
           Metric: item.metric,
@@ -201,7 +201,15 @@ const SalesAnalytics = () => {
         };
       }
       
-      // All other metrics keep their raw value for now
+      // Handle duration metrics
+      if (item.metric.includes('duration')) {
+        return {
+          Metric: item.metric,
+          Value: `${Math.round(rawValue)} days`
+        };
+      }
+      
+      // All other metrics keep their raw value
       return {
         Metric: item.metric,
         Value: rawValue
