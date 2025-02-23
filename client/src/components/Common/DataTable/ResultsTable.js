@@ -102,6 +102,43 @@ const ResultsTable = ({
     handleClose();
   };
 
+  // Add at the start of the component
+  const validateData = (data) => {
+    console.log('[ResultsTable] Validating data structure:', data);
+    
+    if (!Array.isArray(data)) {
+      console.error('[ResultsTable] Invalid data: not an array');
+      return false;
+    }
+    
+    if (data.length === 0) {
+      console.log('[ResultsTable] Empty data array');
+      return true;
+    }
+    
+    const hasRequiredColumns = data.every(row => 
+      'Metric' in row && 'Value' in row
+    );
+    
+    if (!hasRequiredColumns) {
+      console.error('[ResultsTable] Invalid data structure: missing required columns');
+      return false;
+    }
+    
+    return true;
+  };
+
+  // Update the main render logic
+  if (!validateData(data)) {
+    return (
+      <Box sx={{ textAlign: 'center', py: 3 }}>
+        <Typography color="error">
+          Invalid data structure provided
+        </Typography>
+      </Box>
+    );
+  }
+
   if (!data || data.length === 0) {
     return (
       <Box sx={{ textAlign: 'center', py: 3 }}>
@@ -115,27 +152,59 @@ const ResultsTable = ({
   // Extract columns from the first data item
   const columns = Object.keys(data[0]);
 
-  // Format cell value based on type
-  const formatCellValue = (value) => {
+  // Add these helper functions at the top of the component
+  const isNumeric = (value) => !isNaN(value) && value !== '';
+
+  const isCurrencyMetric = (metric) => {
+    const currencyIndicators = ['value', 'amount', 'revenue', 'price', 'cost'];
+    return currencyIndicators.some(indicator => 
+      metric.toLowerCase().includes(indicator)
+    );
+  };
+
+  const isPercentageMetric = (metric) => {
+    const percentageIndicators = ['rate', 'percentage', 'ratio', 'probability'];
+    return percentageIndicators.some(indicator => 
+      metric.toLowerCase().includes(indicator)
+    );
+  };
+
+  // Enhanced formatCellValue function
+  const formatCellValue = (value, column, rowData) => {
+    console.log('[ResultsTable] Formatting cell value:', {
+      value,
+      column,
+      rowData
+    });
+
     if (value === null || value === undefined) return '-';
-    if (typeof value === 'boolean') return value ? 'Yes' : 'No';
-    if (typeof value === 'number') {
-      // Check if it's a currency value based on column name
-      if (columns.some(col => 
-        col.toLowerCase().includes('amount') || 
-        col.toLowerCase().includes('revenue') ||
-        col.toLowerCase().includes('value')
-      )) {
-        return new Intl.NumberFormat('en-US', {
-          style: 'currency',
-          currency: 'USD'
-        }).format(value);
+
+    // Handle Value column formatting
+    if (column === 'Value') {
+      if (isNumeric(value)) {
+        const numValue = Number(value);
+        
+        // Handle currency values
+        if (isCurrencyMetric(rowData.Metric)) {
+          return new Intl.NumberFormat('en-US', {
+            style: 'currency',
+            currency: 'USD'
+          }).format(numValue);
+        }
+        
+        // Handle percentage values
+        if (isPercentageMetric(rowData.Metric)) {
+          return new Intl.NumberFormat('en-US', {
+            style: 'percent',
+            minimumFractionDigits: 1
+          }).format(numValue / 100);
+        }
+        
+        // Regular number formatting
+        return new Intl.NumberFormat('en-US').format(numValue);
       }
-      return new Intl.NumberFormat('en-US').format(value);
     }
-    if (value instanceof Date) {
-      return value.toLocaleDateString();
-    }
+
     return value.toString();
   };
 
@@ -145,6 +214,22 @@ const ResultsTable = ({
       .split('_')
       .map(word => word.charAt(0).toUpperCase() + word.slice(1))
       .join(' ');
+  };
+
+  // Add this helper at the top of the component
+  const formatSql = (sql) => {
+    if (!sql) return null;
+    
+    console.log('[ResultsTable] Formatting SQL:', sql);
+    
+    if (Array.isArray(sql)) {
+      return sql.map((query, index) => ({
+        index,
+        query: query.trim()
+      }));
+    }
+    
+    return [{ index: 0, query: sql.trim() }];
   };
 
   return (
@@ -215,7 +300,7 @@ const ResultsTable = ({
             <TableRow key={rowIndex}>
               {columns.map((column) => (
                 <TableCell key={`${rowIndex}-${column}`}>
-                  {formatCellValue(row[column])}
+                  {formatCellValue(row[column], column, row)}
                 </TableCell>
               ))}
             </TableRow>
@@ -234,18 +319,23 @@ const ResultsTable = ({
             </AccordionSummary>
             <AccordionDetails>
               <Typography variant="caption" color="text.secondary">
-                Generated SQL:
+                Generated SQL Queries:
               </Typography>
-              <Paper 
-                sx={{ 
-                  p: 1, 
-                  bgcolor: 'grey.100',
-                  fontFamily: 'monospace',
-                  fontSize: '0.75rem'
-                }}
-              >
-                {sql}
-              </Paper>
+              {formatSql(sql).map(({ index, query }) => (
+                <Paper 
+                  key={index}
+                  sx={{ 
+                    p: 1, 
+                    mb: 1,
+                    bgcolor: 'grey.100',
+                    fontFamily: 'monospace',
+                    fontSize: '0.75rem'
+                  }}
+                >
+                  {`/* Query ${index + 1} */`}<br />
+                  {query}
+                </Paper>
+              ))}
             </AccordionDetails>
           </Accordion>
         </Box>

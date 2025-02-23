@@ -186,6 +186,19 @@ const SalesAnalytics = () => {
     }
   }, [result]);
 
+  // Add this helper function at the top of the component
+  const transformResultsData = (results) => {
+    console.log('[SalesAnalytics] Transforming raw results:', results);
+    
+    const transformed = results.map(item => ({
+      Metric: item.metric,
+      Value: Object.values(item.data)[0]
+    }));
+    
+    console.log('[SalesAnalytics] Transformed results:', transformed);
+    return transformed;
+  };
+
   return (
     <Box sx={{ maxWidth: 1200, margin: '0 auto', p: 3 }}>
       <Typography variant="h4" gutterBottom>
@@ -277,13 +290,13 @@ const SalesAnalytics = () => {
       {result && (
         <>
           <ResultsTable 
-            data={result.results}
+            data={transformResultsData(result.results)}
             metadata={{
-              title: 'Query Results',
+              title: 'Analysis Results',
               description: result.explanation,
-              context: conversationContext // Pass context to table
+              context: conversationContext
             }}
-            sql={result.sql}
+            sql={Array.isArray(result.sql) ? result.sql : [result.sql]}
           />
           <AIInteractionPanel
             suggestions={result.suggestions || []}
