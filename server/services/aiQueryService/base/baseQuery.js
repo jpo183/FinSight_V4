@@ -20,26 +20,27 @@ class BaseQueryService {
       const messages = [
         {
           role: "system",
-          content: `You are an API that returns responses in JSON format for sales data queries. You maintain persistent conversation context across multiple queries.
-
-Schema: ${JSON.stringify(schema, null, 2)}
+          content: `You are a Sales Operations Director analyzing sales data. Respond in two parts:
+          1. A natural language explanation of the data
+          2. The supporting data in a simple format
 
 Previous Context: ${JSON.stringify(this.getConversationContext())}
 
-IMPORTANT CONTEXT RULES:
-1. ALWAYS use previous context to complete incomplete queries
-2. If a query is missing details (owner, status, etc.), use the context
-3. Update context only when new information is provided
-4. Maintain owner context unless explicitly changed
-5. For partial queries like "Calculate total value of deals won by", use the owner from context
+RESPONSE FORMAT:
+{
+  "explanation": "Clear, natural language explanation of the findings",
+  "data": [], // Raw data array
+  "sql": "SQL used for transparency",
+  "error": null
+}
 
-You MUST respond with JSON format only.
-
-Remember:
-1. Use previous context to understand follow-up questions
-2. Maintain consistency with previous queries
-3. If previous context exists, use it to enhance the current query
-4. For incomplete queries, use context to fill in missing information`
+Example response:
+{
+  "explanation": "Shannon's average lost deal size is $15,860 while won deals average $7,871. This suggests she's more effective at closing smaller deals.",
+  "data": [{"type": "won", "average": 7871}, {"type": "lost", "average": 15860}],
+  "sql": "SELECT...",
+  "error": null
+}`
         }
       ];
 
@@ -192,57 +193,27 @@ Remember:
     
     const systemMessage = {
       role: "system",
-      content: `You are an API that returns responses in JSON format for sales data queries.
-
-IMPORTANT CONTEXT RULES:
-1. ALWAYS use previous context to complete incomplete queries
-2. If a query is missing details (owner, status, etc.), use the context
-3. Update context only when new information is provided
-4. Maintain owner context unless explicitly changed
-5. For partial queries like "Calculate total value of deals won by", use the owner from context
-
-SQL RULES:
-1. When ordering by amount, ALWAYS include "AND amount IS NOT NULL"
-2. When using MAX(amount), use COALESCE(amount, 0) to handle nulls
-3. For deal lookups, exclude null amounts with "AND amount IS NOT NULL"
-
-Given this database schema: ${JSON.stringify(schema, null, 2)}
+      content: `You are a Sales Operations Director analyzing sales data. Respond in two parts:
+      1. A natural language explanation of the data
+      2. The supporting data in a simple format
 
 Previous Context: ${JSON.stringify(this.getConversationContext())}
 
 RESPONSE FORMAT:
-For standard queries:
 {
-  "sql": string | null,
-  "explanation": string | null,
-  "queryType": "standard",
-  "timePeriod": {"start": null, "end": null},
-  "filters": [],
-  "results": [],
-  "error": string | null
+  "explanation": "Clear, natural language explanation of the findings",
+  "data": [], // Raw data array
+  "sql": "SQL used for transparency",
+  "error": null
 }
 
-For analysis queries:
+Example response:
 {
-  "sql": string[] | null,  // Array of SQL queries
-  "metrics": string[] | null,  // Description of each metric
-  "explanation": string | null,
-  "queryType": "analysis",
-  "timePeriod": {"start": null, "end": null},
-  "filters": [],
-  "results": [],
-  "error": string | null
-}
-
-Remember: ALWAYS use ILIKE with wildcards for names (e.g., owner_name ILIKE '%shannon%')
-
-ANALYSIS METRICS:
-When analyzing performance, include queries for:
-- Win/loss ratio
-- Average deal sizes (won vs lost)
-- Sales cycle duration
-- Industry success rates
-- Common stages where deals are lost`
+  "explanation": "Shannon's average lost deal size is $15,860 while won deals average $7,871. This suggests she's more effective at closing smaller deals.",
+  "data": [{"type": "won", "average": 7871}, {"type": "lost", "average": 15860}],
+  "sql": "SELECT...",
+  "error": null
+}`
     };
 
     const queryMessage = {

@@ -306,25 +306,28 @@ const SalesAnalytics = () => {
 
       {/* Results Display */}
       {result && (
-        <>
-          <ResultsTable 
-            data={transformResultsData(result.results)}
-            metadata={{
-              title: 'Analysis Results',
-              description: result.explanation,
-              context: conversationContext
-            }}
-            sql={Array.isArray(result.sql) ? result.sql : [result.sql]}
-          />
-          <AIInteractionPanel
-            suggestions={result.suggestions || []}
-            onSuggestionClick={onSuggestionClick}
-            metadata={result.metadata}
-            history={aiCore.current.getHistory()}
-            context={conversationContext} // Pass context to AI panel
-            domain="sales"
-          />
-        </>
+        <div className="analysis-results">
+          <h3>Analysis</h3>
+          
+          {/* Natural language explanation */}
+          <div className="explanation">
+            {result.explanation}
+          </div>
+
+          {/* Simple data table if needed */}
+          {result.data && result.data.length > 0 && (
+            <table className="data-table">
+              <tbody>
+                {result.data.map((item, i) => (
+                  <tr key={i}>
+                    <td>{item.type}</td>
+                    <td>${item.average.toLocaleString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
       )}
     </Box>
   );
