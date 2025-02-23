@@ -31,6 +31,23 @@ const AIInteractionPanel = ({
   domain = 'general'
 }) => {
   console.log('[AIInteractionPanel] Rendering with suggestions:', suggestions);
+  console.log('[AIInteractionPanel] Current history:', history);
+
+  // Safely format timestamp
+  const formatTimestamp = (timestamp) => {
+    try {
+      return new Date(timestamp).toLocaleTimeString();
+    } catch (error) {
+      console.error('[AIInteractionPanel] Error formatting timestamp:', error);
+      return 'Invalid time';
+    }
+  };
+
+  // Safely get message text
+  const getMessageText = (item) => {
+    if (!item || !item.data) return 'No message';
+    return item.data.text || item.data.query || 'Message content unavailable';
+  };
 
   return (
     <Paper sx={{ mt: 2, p: 2 }}>
@@ -41,82 +58,90 @@ const AIInteractionPanel = ({
           AI Suggestions
         </Typography>
         
-        {suggestions.length > 0 ? (
+        {Array.isArray(suggestions) && suggestions.length > 0 ? (
           <Stack spacing={2}>
             {suggestions.map((suggestion, index) => (
               <Button
                 key={index}
                 variant="outlined"
-                onClick={() => onSuggestionClick(suggestion)}
+                onClick={() => onSuggestionClick && onSuggestionClick(suggestion)}
                 sx={{ justifyContent: 'flex-start', textAlign: 'left' }}
               >
-                {suggestion.text}
-                <Chip 
-                  label={suggestion.type} 
-                  size="small" 
-                  sx={{ ml: 1 }}
-                  color="primary"
-                  variant="outlined"
-                />
+                {suggestion?.text || 'No suggestion text'}
+                {suggestion?.type && (
+                  <Chip 
+                    label={suggestion.type} 
+                    size="small" 
+                    sx={{ ml: 1 }}
+                    color="primary"
+                    variant="outlined"
+                  />
+                )}
               </Button>
             ))}
           </Stack>
         ) : (
           <Typography color="text.secondary">
-            No suggestions available for this query.
+            Analyzing your query results...
           </Typography>
         )}
       </Box>
 
       <Divider sx={{ my: 2 }} />
 
-      {/* Conversation History */}
-      <Accordion>
-        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-          <Typography variant="subtitle2" color="text.secondary">
-            Conversation History
-          </Typography>
-        </AccordionSummary>
-        <AccordionDetails>
-          <Stack spacing={1}>
-            {history.map((item, index) => (
-              <Box key={index} sx={{ p: 1, bgcolor: 'grey.50', borderRadius: 1 }}>
-                <Typography variant="caption" color="text.secondary">
-                  {new Date(item.timestamp).toLocaleTimeString()}
-                </Typography>
-                <Typography>
-                  {item.type === 'query' ? '🔍 ' : '💡 '}
-                  {item.data.text || item.data.query}
-                </Typography>
-              </Box>
-            ))}
-          </Stack>
-        </AccordionDetails>
-      </Accordion>
+      {/* Conversation History - Only show if there's history */}
+      {Array.isArray(history) && history.length > 0 && (
+        <Accordion>
+          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+            <Typography variant="subtitle2" color="text.secondary">
+              Conversation History
+            </Typography>
+          </AccordionSummary>
+          <AccordionDetails>
+            <Stack spacing={1}>
+              {history.map((item, index) => (
+                <Box key={index} sx={{ p: 1, bgcolor: 'grey.50', borderRadius: 1 }}>
+                  <Typography variant="caption" color="text.secondary">
+                    {formatTimestamp(item?.timestamp)}
+                  </Typography>
+                  <Typography>
+                    {item?.type === 'query' ? '🔍 ' : '💡 '}
+                    {getMessageText(item)}
+                  </Typography>
+                </Box>
+              ))}
+            </Stack>
+          </AccordionDetails>
+        </Accordion>
+      )}
 
-      {/* Context Information */}
-      <Accordion>
-        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-          <Typography variant="subtitle2" color="text.secondary">
-            Analysis Context
-          </Typography>
-        </AccordionSummary>
-        <AccordionDetails>
-          <Stack spacing={1}>
-            <Typography variant="caption">
-              Domain: {domain}
+      {/* Context Information - Only show if there's metadata */}
+      {metadata && Object.keys(metadata).length > 0 && (
+        <Accordion>
+          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+            <Typography variant="subtitle2" color="text.secondary">
+              Analysis Context
             </Typography>
-            <Typography variant="caption">
-              Query Type: {metadata.queryType}
-            </Typography>
-            {metadata.timePeriod && (
+          </AccordionSummary>
+          <AccordionDetails>
+            <Stack spacing={1}>
               <Typography variant="caption">
-                Time Period: {metadata.timePeriod}
+                Domain: {domain || 'Not specified'}
               </Typography>
-            )}
-          </Stack>
-        </AccordionDetails>
-      </Accordion>
+              {metadata.queryType && (
+                <Typography variant="caption">
+                  Query Type: {metadata.queryType}
+                </Typography>
+              )}
+              {metadata.timePeriod && (
+                <Typography variant="caption">
+                  Time Period: {metadata.timePeriod}
+                </Typography>
+              )}
+            </Stack>
+          </AccordionDetails>
+        </Accordion>
+      )}
     </Paper>
   );
 };
