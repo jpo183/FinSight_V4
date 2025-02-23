@@ -229,7 +229,7 @@ const ResultsTable = ({
           <Accordion>
             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
               <Typography variant="caption" color="text.secondary">
-                Debug Information
+                Search Construct Information
               </Typography>
             </AccordionSummary>
             <AccordionDetails>
