@@ -87,25 +87,33 @@ const SalesAnalytics = () => {
   const handleSuggestionClick = async (suggestion) => {
     console.log('[SalesAnalytics] AI suggestion clicked:', suggestion);
     
+    // Get the last query and extract context
+    const lastQuery = aiCore.current.getLastQuery();
+    console.log('[SalesAnalytics] Last query:', lastQuery);
+    
+    // Extract name from last query using similar pattern to backend
+    const nameMatch = lastQuery.match(/(?:about |for |did |by )(\w+)(?:'s|\s|$)/i);
+    const context = nameMatch ? nameMatch[1].toLowerCase() : '';
+    console.log('[SalesAnalytics] Extracted context:', context);
+    
     // Generate appropriate follow-up query based on action type
     let followUpQuery = '';
-    const lastQuery = aiCore.current.getLastQuery(); // Use .current to access the instance
-    const context = lastQuery.includes('shannon') ? 'shannon' : '';
-    
     switch (suggestion.action) {
       case 'compare_reps':
-        followUpQuery = `compare ${context}'s won deals with other sales reps`;
+        followUpQuery = `Compare sales performance between ${context} and other reps`;
         break;
       case 'trend_analysis':
-        followUpQuery = `show monthly trend of ${context}'s won deals`;
+        followUpQuery = `Show monthly trend of deals won by ${context}`;
         break;
       case 'value_analysis':
-        followUpQuery = `what is the total value of ${context}'s won deals`;
+        followUpQuery = `Calculate total value of deals won by ${context}`;
         break;
       default:
         followUpQuery = lastQuery;
     }
 
+    console.log('[SalesAnalytics] Generated follow-up query:', followUpQuery);
+    
     // Submit the follow-up query
     await submitQuery(followUpQuery);
   };

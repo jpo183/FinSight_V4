@@ -118,12 +118,12 @@ class BaseQueryService {
       5. Handle NULL values appropriately
       6. ⚠️ ALWAYS use ILIKE for name searches, never use =
       
-      Provide the response in this JSON format:
+      You MUST respond with ONLY a valid JSON object in this format:
       {
         "sql": "THE SQL QUERY",
         "explanation": "BRIEF EXPLANATION OF WHAT THE QUERY DOES",
         "queryType": "${queryType}",
-        "timePeriod": {"start": "ISO_DATE", "end": "ISO_DATE"} // if applicable
+        "timePeriod": {"start": "ISO_DATE", "end": "ISO_DATE"},
         "filters": ["LIST", "OF", "APPLIED", "FILTERS"]
       }
     `;
@@ -135,56 +135,66 @@ class BaseQueryService {
         {
           role: "system",
           content: `You are a SQL expert specializing in ${domain} analytics. 
-          ⚠️ CRITICAL: You must ALWAYS use ILIKE with wildcards (%name%) for ANY name searches. 
-          NEVER use exact matches (=) for names.`
+          ⚠️ CRITICAL: 
+          1. ALWAYS use ILIKE with wildcards (%name%) for ANY name searches
+          2. NEVER use exact matches (=) for names
+          3. ALWAYS respond with ONLY valid JSON, no other text
+          4. Format numbers using SUM() or COUNT() appropriately`
         },
         {
           role: "user",
           content: prompt
         }
       ],
-      temperature: 0.7
+      temperature: 0.3  // Lower temperature for more consistent formatting
     });
 
     console.log('📥 Received OpenAI response');
-    console.log('📝 Raw response:', completion.choices[0].message.content);
+    const responseText = completion.choices[0].message.content.trim();
+    console.log('📝 Raw response:', responseText);
     
-    const response = JSON.parse(completion.choices[0].message.content);
-    
-    console.log('🔍 Starting SQL transformation');
-    console.log('📝 Original SQL:', response.sql);
-    
-    // Define name fields that should use ILIKE
-    const nameFields = [
-      'owner_name',
-      'contact_name',
-      'company_name',
-    ];
-    
-    nameFields.forEach(field => {
-      console.log(`\n🔎 Processing field: ${field}`);
-      const pattern = new RegExp(`((?:\\w+\\.)?)${field}\\s*=\\s*'([^']+)'`, 'gi');
+    try {
+      const response = JSON.parse(responseText);
       
-      // Test if pattern matches before replacement
-      const matches = response.sql.match(pattern);
-      console.log('🔍 Pattern matches:', matches);
+      console.log('🔍 Starting SQL transformation');
+      console.log('📝 Original SQL:', response.sql);
       
-      response.sql = response.sql.replace(pattern, (match, alias, value) => {
-        console.log(`✨ Found match: "${match}"`);
-        console.log(`📌 Table alias: "${alias || 'none'}"`);
-        console.log(`📌 Search value: "${value}"`);
+      // Define name fields that should use ILIKE
+      const nameFields = [
+        'owner_name',
+        'contact_name',
+        'company_name',
+      ];
+      
+      nameFields.forEach(field => {
+        console.log(`\n🔎 Processing field: ${field}`);
+        const pattern = new RegExp(`((?:\\w+\\.)?)${field}\\s*=\\s*'([^']+)'`, 'gi');
         
-        const searchTerms = value.toLowerCase().trim().split(/\s+/);
-        const conditions = searchTerms.map(term => `${alias}${field} ILIKE '%${term}%'`);
+        // Test if pattern matches before replacement
+        const matches = response.sql.match(pattern);
+        console.log('🔍 Pattern matches:', matches);
         
-        const result = `(${conditions.join(' OR ')})`;
-        console.log(`🔄 Transformed to: ${result}`);
-        return result;
+        response.sql = response.sql.replace(pattern, (match, alias, value) => {
+          console.log(`✨ Found match: "${match}"`);
+          console.log(`📌 Table alias: "${alias || 'none'}"`);
+          console.log(`📌 Search value: "${value}"`);
+          
+          const searchTerms = value.toLowerCase().trim().split(/\s+/);
+          const conditions = searchTerms.map(term => `${alias}${field} ILIKE '%${term}%'`);
+          
+          const result = `(${conditions.join(' OR ')})`;
+          console.log(`🔄 Transformed to: ${result}`);
+          return result;
+        });
       });
-    });
 
-    console.log('\n📝 Final SQL:', response.sql);
-    return response;
+      console.log('\n📝 Final SQL:', response.sql);
+      return response;
+    } catch (error) {
+      console.error('Failed to parse OpenAI response:', error);
+      console.error('Raw response:', responseText);
+      throw new APIError('Invalid response format from AI service', 500);
+    }
   }
 
   /**
