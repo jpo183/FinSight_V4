@@ -146,7 +146,8 @@ class BaseQueryService {
           content: prompt
         }
       ],
-      temperature: 0.3  // Lower temperature for more consistent formatting
+      temperature: 0.3,  // Lower temperature for more consistent formatting
+      response_format: { type: "json_object" }  // Add this line to force JSON
     });
 
     console.log('📥 Received OpenAI response');
