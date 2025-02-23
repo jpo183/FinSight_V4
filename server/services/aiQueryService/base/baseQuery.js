@@ -248,8 +248,17 @@ ANALYSIS RULES:
     try {
       const response = JSON.parse(responseText);
       
-      // Check if we have a valid response structure (all required fields present)
-      const requiredFields = ['sql', 'explanation', 'queryType', 'timePeriod', 'filters', 'results', 'error'];
+      // Add missing required fields for analysis responses
+      if (response.queryType === 'analysis') {
+        response.timePeriod = response.timePeriod || {"start": null, "end": null};
+        response.filters = response.filters || [];
+      }
+
+      // Check required fields based on query type
+      const requiredFields = response.queryType === 'analysis' 
+        ? ['sql', 'metrics', 'explanation', 'queryType', 'timePeriod', 'filters', 'results', 'error']
+        : ['sql', 'explanation', 'queryType', 'timePeriod', 'filters', 'results', 'error'];
+      
       const missingFields = requiredFields.filter(field => !(field in response));
       
       if (missingFields.length > 0) {
