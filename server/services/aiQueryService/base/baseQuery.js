@@ -13,24 +13,43 @@ class BaseQueryService {
    */
   static async processQuery(query, { domain, schema, prompts }) {
     try {
-      // Build conversation history with JSON requirement
+      console.log('🔄 processQuery started with:', { query, domain });
+      console.log('📚 Current conversation history:', this.conversationHistory);
+
+      // Build conversation history with JSON requirement and context
       const messages = [
         {
           role: "system",
-          content: `${prompts.roleContext.primaryRole}\n\nSchema: ${JSON.stringify(schema, null, 2)}\n\nYou MUST respond with JSON format only.`
+          content: `${prompts.roleContext.primaryRole}
+
+Schema: ${JSON.stringify(schema, null, 2)}
+
+Previous Context: ${JSON.stringify(this.getConversationContext())}
+
+You MUST respond with JSON format only.
+
+Remember:
+1. Use previous context to understand follow-up questions
+2. Maintain consistency with previous queries
+3. If previous context exists, use it to enhance the current query`
         }
       ];
 
       // Add conversation history if it exists
       if (this.conversationHistory?.length > 0) {
-        messages.push(...this.conversationHistory.slice(-5));
+        console.log('🔍 Adding conversation history to context');
+        const relevantHistory = this.conversationHistory.slice(-5);
+        console.log('📜 Relevant history:', relevantHistory);
+        messages.push(...relevantHistory);
       }
 
-      // Add current query
+      // Add current query with context hint
       messages.push({
         role: "user",
-        content: `Analyze this query and respond with JSON: ${query}`
+        content: `Given the previous context, analyze this query: ${query}`
       });
+
+      console.log('📤 Sending messages to OpenAI:', messages);
 
       // Generate SQL using OpenAI with conversation context
       const aiResponse = await this.generateSQL(messages, {
@@ -41,11 +60,27 @@ class BaseQueryService {
       });
 
       // Store this exchange in conversation history
+      console.log('💾 Updating conversation history');
       this.conversationHistory = this.conversationHistory || [];
       this.conversationHistory.push(
-        { role: "user", content: query },
-        { role: "assistant", content: `Generated SQL: ${aiResponse.sql}\nResults: ${JSON.stringify(aiResponse.results)}` }
+        { 
+          role: "user", 
+          content: query,
+          timestamp: new Date().toISOString(),
+          context: this.getConversationContext()  // Store context with query
+        },
+        { 
+          role: "assistant", 
+          content: JSON.stringify({
+            sql: aiResponse.sql,
+            results: aiResponse.results,
+            context: this.getConversationContext()
+          }),
+          timestamp: new Date().toISOString()
+        }
       );
+
+      console.log('📚 Updated conversation history:', this.conversationHistory);
 
       return {
         query,
@@ -58,7 +93,7 @@ class BaseQueryService {
         }
       };
     } catch (error) {
-      console.error(`Error processing ${domain} query:`, error);
+      console.error(`❌ Error processing ${domain} query:`, error);
       throw error;
     }
   }
@@ -268,17 +303,25 @@ Remember: ALWAYS use ILIKE with wildcards for names (e.g., owner_name ILIKE '%sh
     }
   }
 
+  /**
+   * Get current conversation context
+   * @private
+   */
   static getConversationContext() {
-    // Extract relevant context from conversation history
+    console.log('🔍 Getting conversation context');
     const context = {
       dealStatus: null,
       owner: null,
-      timePeriod: null
+      timePeriod: null,
+      lastQuery: null
     };
 
     if (this.conversationHistory?.length > 0) {
-      // Analyze history to extract context
-      for (const message of this.conversationHistory) {
+      console.log('📚 Analyzing history for context');
+      // Get last 3 exchanges for recent context
+      const recentHistory = this.conversationHistory.slice(-3);
+      
+      for (const message of recentHistory) {
         if (message.content.includes('is_won = FALSE')) {
           context.dealStatus = 'lost';
         } else if (message.content.includes('is_won = TRUE')) {
@@ -290,9 +333,15 @@ Remember: ALWAYS use ILIKE with wildcards for names (e.g., owner_name ILIKE '%sh
         if (ownerMatch) {
           context.owner = ownerMatch[1];
         }
+
+        // Store last query for context
+        if (message.role === 'user') {
+          context.lastQuery = message.content;
+        }
       }
     }
 
+    console.log('📤 Extracted context:', context);
     return context;
   }
 }
