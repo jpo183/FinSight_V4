@@ -102,7 +102,7 @@ const ResultsTable = ({
     handleClose();
   };
 
-  // Add at the start of the component
+  // Update the validation function to handle both metric and deal data
   const validateData = (data) => {
     console.log('[ResultsTable] Validating data structure:', data);
     
@@ -116,12 +116,19 @@ const ResultsTable = ({
       return true;
     }
     
-    const hasRequiredColumns = data.every(row => 
+    // Check if this is metric-based data
+    const isMetricData = data.every(row => 
       'Metric' in row && 'Value' in row
     );
     
-    if (!hasRequiredColumns) {
-      console.error('[ResultsTable] Invalid data structure: missing required columns');
+    // Check if this is deal data
+    const isDealData = data.every(row => 
+      'deal_name' in row || 'Deal Name' in row || 
+      'amount' in row || 'Amount' in row
+    );
+    
+    if (!isMetricData && !isDealData) {
+      console.error('[ResultsTable] Invalid data structure: neither metric nor deal format');
       return false;
     }
     
@@ -169,7 +176,7 @@ const ResultsTable = ({
     );
   };
 
-  // Enhanced formatCellValue function
+  // Update formatCellValue to handle both data types
   const formatCellValue = (value, column, rowData) => {
     console.log('[ResultsTable] Formatting cell value:', {
       value,
@@ -179,30 +186,8 @@ const ResultsTable = ({
 
     if (value === null || value === undefined) return '-';
 
-    // Handle structured data objects
-    if (typeof value === 'object' && value !== null) {
-      // Create a formatted string from object properties
-      return Object.entries(value)
-        .filter(([key]) => key !== 'deal_id' && key !== 'id') // Exclude IDs from display
-        .map(([key, val]) => {
-          // Format numbers appropriately
-          if (typeof val === 'number' || !isNaN(val)) {
-            if (key.includes('amount') || key.includes('revenue') || key.includes('price')) {
-              return new Intl.NumberFormat('en-US', {
-                style: 'currency',
-                currency: 'USD'
-              }).format(Number(val));
-            }
-            // Add other numeric formatting cases as needed
-          }
-          return val;
-        })
-        .filter(Boolean)
-        .join(' - ');
-    }
-
-    // Existing value column formatting logic
-    if (column === 'Value') {
+    // Handle Value column for metric-based results
+    if (column === 'Value' && 'Metric' in rowData) {
       if (isNumeric(value)) {
         const numValue = Number(value);
         
@@ -225,6 +210,42 @@ const ResultsTable = ({
         // Regular number formatting
         return new Intl.NumberFormat('en-US').format(numValue);
       }
+    }
+
+    // Handle Amount/amount columns for deal data
+    if (column.toLowerCase() === 'amount' && isNumeric(value)) {
+      return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD'
+      }).format(Number(value));
+    }
+
+    // Handle date fields
+    if (column.toLowerCase().includes('date') && value) {
+      try {
+        return new Date(value).toLocaleDateString();
+      } catch (e) {
+        return value;
+      }
+    }
+
+    // Handle structured data objects
+    if (typeof value === 'object' && value !== null) {
+      return Object.entries(value)
+        .filter(([key]) => key !== 'deal_id' && key !== 'id')
+        .map(([key, val]) => {
+          if (typeof val === 'number' || !isNaN(val)) {
+            if (key.includes('amount') || key.includes('revenue') || key.includes('price')) {
+              return new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: 'USD'
+              }).format(Number(val));
+            }
+          }
+          return val;
+        })
+        .filter(Boolean)
+        .join(' - ');
     }
 
     return value.toString();
