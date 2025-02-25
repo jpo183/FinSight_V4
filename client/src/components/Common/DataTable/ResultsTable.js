@@ -179,7 +179,29 @@ const ResultsTable = ({
 
     if (value === null || value === undefined) return '-';
 
-    // Handle Value column formatting
+    // Handle structured data objects
+    if (typeof value === 'object' && value !== null) {
+      // Create a formatted string from object properties
+      return Object.entries(value)
+        .filter(([key]) => key !== 'deal_id' && key !== 'id') // Exclude IDs from display
+        .map(([key, val]) => {
+          // Format numbers appropriately
+          if (typeof val === 'number' || !isNaN(val)) {
+            if (key.includes('amount') || key.includes('revenue') || key.includes('price')) {
+              return new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: 'USD'
+              }).format(Number(val));
+            }
+            // Add other numeric formatting cases as needed
+          }
+          return val;
+        })
+        .filter(Boolean)
+        .join(' - ');
+    }
+
+    // Existing value column formatting logic
     if (column === 'Value') {
       if (isNumeric(value)) {
         const numValue = Number(value);
