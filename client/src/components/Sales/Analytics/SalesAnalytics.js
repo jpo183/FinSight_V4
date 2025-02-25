@@ -190,29 +190,49 @@ const SalesAnalytics = () => {
   const transformResultsData = (results) => {
     console.log('[SalesAnalytics] Transforming raw results:', results);
     
-    return results.map(item => {
-      const rawValue = Object.values(item.data)[0];
-      
-      // Handle count metrics
-      if (item.metric.includes('Total number of')) {
+    // If results is not an array, wrap it in one
+    const resultsArray = Array.isArray(results) ? results : [results];
+    
+    return resultsArray.map(item => {
+      // Handle metric-based results (analysis queries)
+      if (item.metric) {
+        const rawValue = item.data;
+        
+        // Handle count metrics
+        if (item.metric.includes('Total number of')) {
+          return {
+            Metric: item.metric,
+            Value: `${rawValue} deals`
+          };
+        }
+        
+        // Handle duration metrics
+        if (item.metric.includes('duration')) {
+          return {
+            Metric: item.metric,
+            Value: `${Math.round(rawValue)} days`
+          };
+        }
+        
+        // All other metrics keep their raw value
         return {
           Metric: item.metric,
-          Value: `${rawValue} deals`
+          Value: rawValue
         };
       }
       
-      // Handle duration metrics
-      if (item.metric.includes('duration')) {
-        return {
-          Metric: item.metric,
-          Value: `${Math.round(rawValue)} days`
-        };
-      }
-      
-      // All other metrics keep their raw value
+      // Handle raw deal data (direct queries)
+      // Convert the deal object into rows for the table
       return {
-        Metric: item.metric,
-        Value: rawValue
+        'Deal Name': item.deal_name,
+        'Amount': new Intl.NumberFormat('en-US', {
+          style: 'currency',
+          currency: 'USD'
+        }).format(Number(item.amount)),
+        'Stage': item.deal_stage,
+        'Close Date': new Date(item.close_date).toLocaleDateString(),
+        ...(item.company_name && { 'Company': item.company_name }),
+        ...(item.owner_name && { 'Owner': item.owner_name })
       };
     });
   };
