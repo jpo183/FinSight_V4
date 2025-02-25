@@ -26,9 +26,35 @@ const SALES_PROMPTS = {
         'What deals are in negotiation stage?'
       ],
       sqlPattern: {
-        basic: 'SELECT deal_stage, COUNT(*) as deal_count, SUM(amount) as total_value FROM deals GROUP BY deal_stage',
-        withTimeframe: 'SELECT deal_stage, COUNT(*) as deal_count, SUM(amount) as total_value FROM deals WHERE fiscal_quarter = :quarter AND fiscal_year = :year GROUP BY deal_stage',
-        specificStage: 'SELECT deal_name, amount, close_date FROM deals WHERE deal_stage = :stage_name'
+        basic: `SELECT 
+          d.*, 
+          c.company_name,
+          o.owner_name,
+          c.industry,
+          c.annual_revenue as company_revenue
+        FROM deals d 
+        JOIN companies c ON d.company_id = c.company_id 
+        JOIN owners o ON d.owner_id = o.owner_id`,
+        withTimeframe: `SELECT 
+          d.*, 
+          c.company_name,
+          o.owner_name,
+          c.industry,
+          c.annual_revenue as company_revenue
+        FROM deals d 
+        JOIN companies c ON d.company_id = c.company_id 
+        JOIN owners o ON d.owner_id = o.owner_id 
+        WHERE fiscal_quarter = :quarter AND fiscal_year = :year`,
+        specificStage: `SELECT 
+          d.*, 
+          c.company_name,
+          o.owner_name,
+          c.industry,
+          c.annual_revenue as company_revenue
+        FROM deals d 
+        JOIN companies c ON d.company_id = c.company_id 
+        JOIN owners o ON d.owner_id = o.owner_id 
+        WHERE deal_stage = :stage_name`
       },
       parameters: {
         quarter: 'Fiscal quarter',
@@ -63,9 +89,37 @@ const SALES_PROMPTS = {
           'How does this win rate compare to other reps?'
         ],
         contextMaintenance: {
-          valueQuery: 'SELECT SUM(d.amount) FROM deals d JOIN owners o ON d.owner_id = o.owner_id WHERE d.is_won = TRUE',
-          timeQuery: 'SELECT close_date, COUNT(*) FROM deals d JOIN owners o ON d.owner_id = o.owner_id WHERE d.is_won = TRUE',
-          comparisonQuery: 'SELECT o.owner_name, COUNT(*) FROM deals d JOIN owners o ON d.owner_id = o.owner_id WHERE d.is_won = TRUE'
+          valueQuery: `SELECT 
+            d.*, 
+            c.company_name,
+            o.owner_name,
+            c.industry,
+            c.annual_revenue as company_revenue
+          FROM deals d 
+          JOIN companies c ON d.company_id = c.company_id 
+          JOIN owners o ON d.owner_id = o.owner_id 
+          WHERE d.is_won = TRUE`,
+          timeQuery: `SELECT 
+            d.*, 
+            c.company_name,
+            o.owner_name,
+            c.industry,
+            c.annual_revenue as company_revenue,
+            close_date 
+          FROM deals d 
+          JOIN companies c ON d.company_id = c.company_id 
+          JOIN owners o ON d.owner_id = o.owner_id 
+          WHERE d.is_won = TRUE`,
+          comparisonQuery: `SELECT 
+            d.*, 
+            c.company_name,
+            o.owner_name,
+            c.industry,
+            c.annual_revenue as company_revenue
+          FROM deals d 
+          JOIN companies c ON d.company_id = c.company_id 
+          JOIN owners o ON d.owner_id = o.owner_id 
+          WHERE d.is_won = TRUE`
         }
       },
       lost: {
@@ -77,9 +131,37 @@ const SALES_PROMPTS = {
           'What stages did these lost deals reach?'
         ],
         contextMaintenance: {
-          valueQuery: 'SELECT SUM(d.amount) FROM deals d JOIN owners o ON d.owner_id = o.owner_id WHERE d.is_won = FALSE',
-          timeQuery: 'SELECT close_date, COUNT(*) FROM deals d JOIN owners o ON d.owner_id = o.owner_id WHERE d.is_won = FALSE',
-          comparisonQuery: 'SELECT o.owner_name, COUNT(*) FROM deals d JOIN owners o ON d.owner_id = o.owner_id WHERE d.is_won = FALSE'
+          valueQuery: `SELECT 
+            d.*, 
+            c.company_name,
+            o.owner_name,
+            c.industry,
+            c.annual_revenue as company_revenue
+          FROM deals d 
+          JOIN companies c ON d.company_id = c.company_id 
+          JOIN owners o ON d.owner_id = o.owner_id 
+          WHERE d.is_won = FALSE`,
+          timeQuery: `SELECT 
+            d.*, 
+            c.company_name,
+            o.owner_name,
+            c.industry,
+            c.annual_revenue as company_revenue,
+            close_date 
+          FROM deals d 
+          JOIN companies c ON d.company_id = c.company_id 
+          JOIN owners o ON d.owner_id = o.owner_id 
+          WHERE d.is_won = FALSE`,
+          comparisonQuery: `SELECT 
+            d.*, 
+            c.company_name,
+            o.owner_name,
+            c.industry,
+            c.annual_revenue as company_revenue
+          FROM deals d 
+          JOIN companies c ON d.company_id = c.company_id 
+          JOIN owners o ON d.owner_id = o.owner_id 
+          WHERE d.is_won = FALSE`
         }
       }
     },
