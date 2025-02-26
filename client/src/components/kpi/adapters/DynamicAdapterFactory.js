@@ -404,11 +404,11 @@ const createDynamicAdapter = (domain, kpiConfigs) => {
           // Skip KPIs with no visualization type
           if (!kpi.visualizationType) return false;
           
-          // If we've already processed this KPI, skip it
-          if (processedKpis.has(kpi.name)) return false;
+          // If we've already processed this KPI ID, skip it
+          if (processedKpis.has(kpi.id)) return false;
           
-          // Mark this KPI as processed
-          processedKpis.set(kpi.name, true);
+          // Mark this KPI ID as processed
+          processedKpis.set(kpi.id, true);
           
           return true;
         })
