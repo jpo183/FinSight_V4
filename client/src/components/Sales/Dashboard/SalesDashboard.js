@@ -377,9 +377,17 @@ const SalesDashboard = () => {
 
   // Get chart data based on the selected time range
   const getChartData = () => {
-    if (!salesData) return [];
+    console.log('getChartData called with timeRangeView:', timeRangeView);
+    console.log('selectedPeriod:', selectedPeriod);
+    console.log('salesData available:', !!salesData);
+    
+    if (!salesData) {
+      console.log('No salesData available');
+      return [];
+    }
     
     if (timeRangeView === 'annual') {
+      console.log('Returning annual data:', salesData.monthlyData);
       // Return monthly data for the whole year
       return salesData.monthlyData;
     } else if (timeRangeView === 'quarterly') {
@@ -391,24 +399,28 @@ const SalesDashboard = () => {
         'Q4': ['October', 'November', 'December']
       };
       
-      return salesData.monthlyData.filter(item => 
+      const filteredData = salesData.monthlyData.filter(item => 
         quarterMonths[selectedPeriod.quarter].includes(item.month)
       );
+      console.log('Returning quarterly data for', selectedPeriod.quarter, ':', filteredData);
+      return filteredData;
     } else if (timeRangeView === 'monthly') {
       // Return weekly data for the selected month
+      console.log('Selected month:', selectedPeriod.month);
+      
       // This would normally come from your API, but we'll mock it here
       const weeklyData = [
-        { week: 'Week 1', sales: 42000, target: 45000 },
-        { week: 'Week 2', sales: 45000, target: 45000 },
-        { week: 'Week 3', sales: 46000, target: 45000 },
-        { week: 'Week 4', sales: 47000, target: 45000 }
+        { week: 'Week 1', sales: 42000, target: 45000, cumulativeSales: 42000, cumulativeTarget: 45000 },
+        { week: 'Week 2', sales: 45000, target: 45000, cumulativeSales: 87000, cumulativeTarget: 90000 },
+        { week: 'Week 3', sales: 46000, target: 45000, cumulativeSales: 133000, cumulativeTarget: 135000 },
+        { week: 'Week 4', sales: 47000, target: 45000, cumulativeSales: 180000, cumulativeTarget: 180000 }
       ];
       
-      // In a real implementation, you would fetch this data from your API
-      // based on the selected month
+      console.log('Returning weekly data:', weeklyData);
       return weeklyData;
     }
     
+    console.log('No matching time range view, returning empty array');
     return [];
   };
   
@@ -441,6 +453,12 @@ const SalesDashboard = () => {
       return `${selectedPeriod.month} Cumulative Weekly Sales`;
     }
   };
+
+  // Add effect to log when time range changes
+  useEffect(() => {
+    console.log('Time range changed to:', timeRangeView);
+    console.log('Selected period:', selectedPeriod);
+  }, [timeRangeView, selectedPeriod]);
 
   if (loading) {
     return (
@@ -1016,6 +1034,7 @@ const SalesDashboard = () => {
         <Accordion 
           expanded={expanded.charts} 
           onChange={handleAccordionChange('charts')}
+          key={`charts-${timeRangeView}-${selectedPeriod.quarter}-${selectedPeriod.month}`}
         >
           <AccordionSummary
             expandIcon={<ExpandMoreIcon />}
@@ -1032,20 +1051,23 @@ const SalesDashboard = () => {
                   <Typography variant="h6" gutterBottom>
                     {getChartTitle()}
                   </Typography>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <BarChart
-                      data={getChartData()}
-                      margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey={getXAxisDataKey()} />
-                      <YAxis />
-                      <RechartsTooltip formatter={(value) => formatCurrency(value)} />
-                      <Legend />
-                      <Bar dataKey="sales" name="Sales" fill="#8884d8" />
-                      <Bar dataKey="target" name="Target" fill="#82ca9d" />
-                    </BarChart>
-                  </ResponsiveContainer>
+                  <Box sx={{ height: 300 }}>
+                    {console.log('Rendering bar chart with data:', getChartData())}
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        data={getChartData()}
+                        margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey={getXAxisDataKey()} />
+                        <YAxis />
+                        <RechartsTooltip formatter={(value) => formatCurrency(value)} />
+                        <Legend />
+                        <Bar dataKey="sales" name="Sales" fill="#8884d8" />
+                        <Bar dataKey="target" name="Target" fill="#82ca9d" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </Box>
                 </Paper>
               </Grid>
               
@@ -1055,31 +1077,34 @@ const SalesDashboard = () => {
                   <Typography variant="h6" gutterBottom>
                     {getTrendChartTitle()}
                   </Typography>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <LineChart
-                      data={getChartData()}
-                      margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey={getXAxisDataKey()} />
-                      <YAxis />
-                      <RechartsTooltip formatter={(value) => formatCurrency(value)} />
-                      <Legend />
-                      <Line 
-                        type="monotone" 
-                        dataKey={timeRangeView === 'monthly' ? 'sales' : 'cumulativeSales'} 
-                        name="Cumulative Sales" 
-                        stroke="#8884d8" 
-                        activeDot={{ r: 8 }} 
-                      />
-                      <Line 
-                        type="monotone" 
-                        dataKey={timeRangeView === 'monthly' ? 'target' : 'cumulativeTarget'} 
-                        name="Cumulative Target" 
-                        stroke="#82ca9d" 
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
+                  <Box sx={{ height: 300 }}>
+                    {console.log('Rendering line chart with data:', getChartData())}
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart
+                        data={getChartData()}
+                        margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey={getXAxisDataKey()} />
+                        <YAxis />
+                        <RechartsTooltip formatter={(value) => formatCurrency(value)} />
+                        <Legend />
+                        <Line 
+                          type="monotone" 
+                          dataKey={timeRangeView === 'monthly' ? 'sales' : 'cumulativeSales'} 
+                          name="Cumulative Sales" 
+                          stroke="#8884d8" 
+                          activeDot={{ r: 8 }} 
+                        />
+                        <Line 
+                          type="monotone" 
+                          dataKey={timeRangeView === 'monthly' ? 'target' : 'cumulativeTarget'} 
+                          name="Cumulative Target" 
+                          stroke="#82ca9d" 
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </Box>
                 </Paper>
               </Grid>
             </Grid>
