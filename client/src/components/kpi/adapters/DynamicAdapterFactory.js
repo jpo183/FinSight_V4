@@ -155,8 +155,41 @@ const createDynamicAdapter = (domain, kpiConfigs) => {
   console.log('Creating dynamic adapter for domain:', domain);
   console.log('KPI configs received:', kpiConfigs);
   
+  // Map dashboard section names to standardized sections
+  const sectionMapping = {
+    'revenue': 'revenue',
+    'sales': 'revenue',
+    'income': 'revenue',
+    
+    'activity': 'activity',
+    'activities': 'activity',
+    'actions': 'activity',
+    
+    'customer': 'customer',
+    'customers': 'customer',
+    'client': 'customer',
+    'clients': 'customer',
+    
+    'pipeline': 'pipeline',
+    'deals': 'pipeline',
+    'opportunities': 'pipeline',
+    
+    'performance': 'performance',
+    'metrics': 'performance',
+    'kpis': 'performance'
+  };
+  
+  // Normalize section names in KPI configs
+  const normalizedKpis = kpiConfigs.map(kpi => {
+    const section = kpi.dashboardSection ? kpi.dashboardSection.toLowerCase() : 'performance';
+    return {
+      ...kpi,
+      dashboardSection: sectionMapping[section] || 'performance' // Default to performance if not mapped
+    };
+  });
+  
   // Filter KPIs by domain and those that should be shown on dashboard
-  const dashboardKpis = kpiConfigs.filter(kpi => 
+  const dashboardKpis = normalizedKpis.filter(kpi => 
     kpi.domain === domain && kpi.dashboardSection !== 'none'
   );
   
@@ -329,7 +362,19 @@ const createDynamicAdapter = (domain, kpiConfigs) => {
     
     // Get all dashboard sections
     getSections: () => {
-      return Object.keys(kpisBySection).map(sectionId => ({
+      // Define the order of sections
+      const sectionOrder = ['revenue', 'pipeline', 'activity', 'customer', 'performance'];
+      
+      // Get all sections that have KPIs
+      const availableSections = Object.keys(kpisBySection);
+      
+      // Sort sections according to the defined order
+      const sortedSections = sectionOrder
+        .filter(section => availableSections.includes(section))
+        .concat(availableSections.filter(section => !sectionOrder.includes(section)));
+      
+      // Map to section objects
+      return sortedSections.map(sectionId => ({
         id: sectionId,
         name: formatSectionName(sectionId),
         kpis: kpisBySection[sectionId]
@@ -354,7 +399,7 @@ const createDynamicAdapter = (domain, kpiConfigs) => {
         id: kpi.id,
         name: kpi.name,
         description: kpi.description,
-        type: kpi.visualizationType,
+        type: kpi.visualizationType || 'card', // Default to card if not specified
         dataType: kpi.data_type,
         unit: kpi.unit
       }));
@@ -384,8 +429,17 @@ const createDynamicAdapter = (domain, kpiConfigs) => {
 
 // Helper function to format section names
 const formatSectionName = (sectionId) => {
-  // Convert camelCase or snake_case to Title Case
-  return sectionId
+  // Map section IDs to display names
+  const sectionNames = {
+    'revenue': 'Revenue Metrics',
+    'pipeline': 'Pipeline Metrics',
+    'activity': 'Activity Metrics',
+    'customer': 'Customer Metrics',
+    'performance': 'Performance Charts'
+  };
+  
+  // Return mapped name or generate one from the ID
+  return sectionNames[sectionId] || sectionId
     .replace(/([A-Z])/g, ' $1') // Insert space before capital letters
     .replace(/_/g, ' ') // Replace underscores with spaces
     .replace(/^\w/, c => c.toUpperCase()) // Capitalize first letter
