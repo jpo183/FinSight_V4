@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import {
   AppBar, Toolbar, Typography, Box, Paper, Grid, TableContainer,
   Table, TableHead, TableBody, TableRow, TableCell, Accordion,
-  AccordionSummary, AccordionDetails, Card, CardContent, LinearProgress
+  AccordionSummary, AccordionDetails, Card, CardContent, LinearProgress, Divider
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
@@ -40,13 +40,7 @@ const TemplateDashboard = ({
   // State for time range and period selection
   const [timeRangeView, setTimeRangeView] = useState('annual');
   const [selectedPeriod, setSelectedPeriod] = useState({ quarter: 'Q3', month: 'July' });
-  const [expanded, setExpanded] = useState({
-    revenue: true,
-    pipeline: false,
-    customers: false,
-    activity: false,
-    charts: false
-  });
+  const [expanded, setExpanded] = useState(domainAdapter.getSections().map(s => s.id));
 
   // Handle time range change
   const handleTimeRangeChange = (event, newValue) => {
@@ -64,11 +58,12 @@ const TemplateDashboard = ({
   };
 
   // Handle accordion expansion
-  const handleAccordionChange = (panel) => (event, isExpanded) => {
-    setExpanded({
-      ...expanded,
-      [panel]: isExpanded
-    });
+  const handleAccordionChange = (sectionId) => (event, isExpanded) => {
+    setExpanded(prev => 
+      isExpanded 
+        ? [...prev, sectionId] 
+        : prev.filter(id => id !== sectionId)
+    );
   };
 
   // Get filtered data based on time range
@@ -278,56 +273,54 @@ const TemplateDashboard = ({
           </Table>
         </TableContainer>
         
-        {/* Domain-specific sections rendered dynamically */}
+        {/* Render each section as an accordion */}
         {sections.map(section => {
           const sectionCharts = domainAdapter.getChartsForSection(section.id);
           
           // Skip rendering if no charts in this section
           if (!sectionCharts || sectionCharts.length === 0) return null;
           
+          const isExpanded = expanded.includes(section.id);
+          
           return (
-            <Box key={section.id} sx={{ mb: 4 }}>
-              <Typography variant="h5" sx={{ mb: 2, mt: 3, fontWeight: 'bold' }}>
-                {section.name}
-              </Typography>
-              
-              {/* Render charts for this section */}
-              <Grid container spacing={3}>
-                {sectionCharts.map(chart => (
-                  <Grid item xs={12} md={6} lg={4} key={chart.id}>
-                    {renderChart(chart, data[chart.id], domainAdapter)}
-                  </Grid>
-                ))}
-              </Grid>
-            </Box>
+            <Accordion 
+              key={section.id} 
+              expanded={isExpanded}
+              onChange={handleAccordionChange(section.id)}
+              sx={{ 
+                mb: 2,
+                '&:before': { display: 'none' }, // Remove the default divider
+                boxShadow: 2
+              }}
+            >
+              <AccordionSummary
+                expandIcon={<ExpandMoreIcon />}
+                aria-controls={`${section.id}-content`}
+                id={`${section.id}-header`}
+                sx={{ 
+                  backgroundColor: 'primary.light',
+                  color: 'primary.contrastText',
+                  '&.Mui-expanded': {
+                    minHeight: 56,
+                  }
+                }}
+              >
+                <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+                  {section.name}
+                </Typography>
+              </AccordionSummary>
+              <AccordionDetails sx={{ p: 3 }}>
+                <Grid container spacing={3}>
+                  {sectionCharts.map(chart => (
+                    <Grid item xs={12} md={6} lg={4} key={chart.id}>
+                      {renderChart(chart, data[chart.id], domainAdapter)}
+                    </Grid>
+                  ))}
+                </Grid>
+              </AccordionDetails>
+            </Accordion>
           );
         })}
-        
-        {/* Charts Section */}
-        <Accordion
-          expanded={expanded.charts}
-          onChange={handleAccordionChange('charts')}
-        >
-          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-            <Typography variant="h6">Performance Charts</Typography>
-          </AccordionSummary>
-          <AccordionDetails>
-            <Grid container spacing={3}>
-              {domainAdapter.charts.map(chart => (
-                <Grid item xs={12} key={chart.id}>
-                  <Paper sx={{ p: 3 }}>
-                    <Typography variant="h6" gutterBottom>
-                      {chart.getTitle(timeRangeView, selectedPeriod)}
-                    </Typography>
-                    <Box sx={{ height: 300 }}>
-                      {chart.render(filteredData, timeRangeView, selectedPeriod)}
-                    </Box>
-                  </Paper>
-                </Grid>
-              ))}
-            </Grid>
-          </AccordionDetails>
-        </Accordion>
       </Box>
     </>
   );
