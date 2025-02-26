@@ -217,6 +217,16 @@ const SalesDashboard = () => {
     activity: {}
   });
 
+  // Add state for primary metric
+  const [primaryMetric, setPrimaryMetric] = useState({
+    name: 'Revenue',
+    current: 0,
+    target: 2500000,
+    progress: 0,
+    yearProgress: 0,
+    relativeProgress: 0
+  });
+
   const handleAccordionChange = (panel) => (event, isExpanded) => {
     setExpanded({...expanded, [panel]: isExpanded});
   };
@@ -484,6 +494,67 @@ const SalesDashboard = () => {
       activity: activityData
     });
   }, [timeRangeView, selectedPeriod]);
+
+  // Update primary metric based on time range
+  useEffect(() => {
+    if (!salesData) return;
+    
+    // Calculate primary metric values based on time range
+    let current, target, metricName;
+    
+    if (timeRangeView === 'annual') {
+      current = salesData.ytdTotal;
+      target = salesData.annualTarget;
+      metricName = 'Annual Revenue';
+    } else if (timeRangeView === 'quarterly') {
+      // Get quarterly data
+      const quarterData = {
+        'Q1': { current: 550000, target: 625000 },
+        'Q2': { current: 680000, target: 625000 },
+        'Q3': { current: 590000, target: 625000 },
+        'Q4': { current: 480000, target: 625000 }
+      };
+      
+      current = quarterData[selectedPeriod.quarter].current;
+      target = quarterData[selectedPeriod.quarter].target;
+      metricName = `${selectedPeriod.quarter} Revenue`;
+    } else if (timeRangeView === 'monthly') {
+      // Get monthly data
+      const monthlyData = {
+        'January': { current: 180000, target: 208000 },
+        'February': { current: 175000, target: 208000 },
+        'March': { current: 195000, target: 208000 },
+        'April': { current: 220000, target: 208000 },
+        'May': { current: 230000, target: 208000 },
+        'June': { current: 230000, target: 208000 },
+        'July': { current: 190000, target: 208000 },
+        'August': { current: 200000, target: 208000 },
+        'September': { current: 200000, target: 208000 },
+        'October': { current: 160000, target: 208000 },
+        'November': { current: 150000, target: 208000 },
+        'December': { current: 170000, target: 208000 }
+      };
+      
+      current = monthlyData[selectedPeriod.month].current;
+      target = monthlyData[selectedPeriod.month].target;
+      metricName = `${selectedPeriod.month} Revenue`;
+    }
+    
+    // Calculate progress metrics
+    const achieved = (current / target) * 100;
+    const timeProgress = timeRangeView === 'annual' ? progress.yearProgress : 100; // For quarterly/monthly, we show full period
+    const relativeProgress = achieved / timeProgress;
+    
+    setPrimaryMetric({
+      name: metricName,
+      current,
+      target,
+      progress: achieved,
+      yearProgress: timeProgress,
+      relativeProgress
+    });
+    
+  }, [timeRangeView, selectedPeriod, salesData, progress.yearProgress]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -906,6 +977,78 @@ const SalesDashboard = () => {
               </FormControl>
             )}
           </Box>
+        </Paper>
+        
+        {/* Primary Metric Section - Always visible and prominent */}
+        <Paper 
+          elevation={3} 
+          sx={{ 
+            mb: 4, 
+            p: 3, 
+            borderTop: '4px solid #1976d2',
+            background: 'linear-gradient(to right, rgba(25, 118, 210, 0.05), rgba(25, 118, 210, 0.1))'
+          }}
+        >
+          <Typography variant="h5" gutterBottom sx={{ fontWeight: 'bold', color: '#1976d2' }}>
+            {primaryMetric.name}
+          </Typography>
+          
+          <Grid container spacing={3}>
+            <Grid item xs={12} md={4}>
+              <Box>
+                <Typography variant="subtitle1" color="textSecondary">Current</Typography>
+                <Typography variant="h3" sx={{ fontWeight: 'bold', color: '#1976d2' }}>
+                  {formatCurrency(primaryMetric.current)}
+                </Typography>
+              </Box>
+            </Grid>
+            
+            <Grid item xs={12} md={4}>
+              <Box>
+                <Typography variant="subtitle1" color="textSecondary">Target</Typography>
+                <Typography variant="h3">
+                  {formatCurrency(primaryMetric.target)}
+                </Typography>
+              </Box>
+            </Grid>
+            
+            <Grid item xs={12} md={4}>
+              <Box>
+                <Typography variant="subtitle1" color="textSecondary">Progress</Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                  <Box sx={{ width: '100%', mr: 1 }}>
+                    <LinearProgress 
+                      variant="determinate" 
+                      value={Math.min(primaryMetric.progress, 100)} 
+                      color={primaryMetric.relativeProgress >= 1 ? "success" : "primary"}
+                      sx={{ height: 10, borderRadius: 5 }}
+                    />
+                  </Box>
+                  <Box sx={{ minWidth: 35 }}>
+                    <Typography variant="body2" color="textSecondary">
+                      {`${primaryMetric.progress.toFixed(1)}%`}
+                    </Typography>
+                  </Box>
+                </Box>
+                
+                {timeRangeView === 'annual' && (
+                  <Typography variant="body2" color="textSecondary" gutterBottom>
+                    Time Elapsed: {primaryMetric.yearProgress.toFixed(1)}%
+                  </Typography>
+                )}
+                
+                <Typography 
+                  variant="body1" 
+                  color={primaryMetric.relativeProgress >= 1 ? "success.main" : "error.main"}
+                  fontWeight="bold"
+                >
+                  {primaryMetric.relativeProgress >= 1 
+                    ? `${((primaryMetric.relativeProgress - 1) * 100).toFixed(1)}% ahead of target` 
+                    : `${((1 - primaryMetric.relativeProgress) * 100).toFixed(1)}% behind target`}
+                </Typography>
+              </Box>
+            </Grid>
+          </Grid>
         </Paper>
         
         {/* KPI Summary Table */}
