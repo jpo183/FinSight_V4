@@ -266,56 +266,59 @@ const TemplateDashboard = ({
       setCurrentGoal(null);
     };
     
-    // Handle submitting a goal
+    // Handle submitting the goal form
     const handleSubmitGoal = async (goalData) => {
       try {
-        // Load existing goals
+        // For now, just store in localStorage
         const storedGoals = localStorage.getItem('salesGoals');
         const goals = storedGoals ? JSON.parse(storedGoals) : [];
         
-        let updatedGoals = [...goals];
+        // Check if we're updating an existing goal
+        const existingIndex = goals.findIndex(g => g.id === goalData.id);
         
-        if (currentGoal) {
-          // Editing existing goal
-          const index = updatedGoals.findIndex(g => g.id === currentGoal.id);
-          if (index !== -1) {
-            updatedGoals[index] = { ...goalData, id: currentGoal.id };
-          }
+        if (existingIndex >= 0) {
+          // Update existing goal
+          goals[existingIndex] = goalData;
         } else {
-          // Creating new goal
-          const newGoal = {
-            ...goalData,
-            id: Date.now().toString(),
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          };
-          updatedGoals.push(newGoal);
+          // Add new goal with generated ID
+          goalData.id = Date.now().toString();
+          goals.push(goalData);
         }
         
-        // Save to localStorage
-        localStorage.setItem('salesGoals', JSON.stringify(updatedGoals));
+        // Save back to localStorage
+        localStorage.setItem('salesGoals', JSON.stringify(goals));
+        
+        // Update the goals by KPI map
+        setGoalsByKpi(prev => ({
+          ...prev,
+          [goalData.kpi_id]: goalData
+        }));
         
         // Close the dialog
         handleCloseGoalDialog();
         
-        // Reload the page to refresh data
-        window.location.reload();
-      } catch (err) {
-        console.error('Error saving goal:', err);
-        alert('Failed to save goal. Please try again.');
+        // Refresh the dashboard data
+        // In a real app, you'd probably refetch data from the server
+        // For now, we'll just force a re-render
+        setTimePeriod(prev => prev);
+        
+      } catch (error) {
+        console.error('Error saving goal:', error);
       }
     };
     
-    // Handle accordion toggle
-    const handleAccordionChange = (sectionId) => (event, isExpanded) => {
-      setExpanded(prev => 
-        isExpanded 
-          ? [...prev, sectionId] 
-          : prev.filter(id => id !== sectionId)
-      );
+    // Toggle section expansion
+    const handleToggleSection = (sectionId) => {
+      setExpanded(prev => {
+        if (prev.includes(sectionId)) {
+          return prev.filter(id => id !== sectionId);
+        } else {
+          return [...prev, sectionId];
+        }
+      });
     };
     
-    // Process the data based on time period
+    // Process the data based on selected time period
     const processedData = processData(data);
     
     // Render a chart based on its type
@@ -376,271 +379,167 @@ const TemplateDashboard = ({
       return chartComponent;
     };
     
-    return (
-      <Box sx={{ flexGrow: 1, p: 3 }}>
-        {isTestData && (
-          <Box 
-            sx={{ 
-              bgcolor: 'warning.light', 
-              color: 'warning.contrastText', 
-              p: 2, 
-              mb: 2,
-              borderRadius: 1
-            }}
-          >
-            <Typography variant="body1">
-              <strong>Test Mode:</strong> This dashboard is displaying test data. Real data will be shown when connected to your data source.
+    // Wrap the return statement in a try/catch
+    try {
+      return (
+        <Box sx={{ p: 3 }}>
+          {/* Dashboard Header */}
+          <Box sx={{ mb: 3 }}>
+            <Typography variant="h4" component="h1" gutterBottom>
+              {domainAdapter.dashboardTitle}
             </Typography>
+            
+            {isTestData && (
+              <Paper sx={{ p: 2, mb: 2, bgcolor: 'info.light', color: 'info.contrastText' }}>
+                <Typography variant="body1">
+                  This dashboard is displaying test data. In a production environment, this would be replaced with real data from your systems.
+                </Typography>
+              </Paper>
+            )}
+            
+            {/* Time Period Controls */}
+            <Paper sx={{ p: 2 }}>
+              <Grid container spacing={2} alignItems="center">
+                <Grid item>
+                  <Typography variant="body1">Time Period:</Typography>
+                </Grid>
+                <Grid item>
+                  <ToggleButtonGroup
+                    value={timePeriod}
+                    exclusive
+                    onChange={handleTimePeriodChange}
+                    size="small"
+                  >
+                    <ToggleButton value="weekly">Weekly</ToggleButton>
+                    <ToggleButton value="monthly">Monthly</ToggleButton>
+                    <ToggleButton value="quarterly">Quarterly</ToggleButton>
+                    <ToggleButton value="yearly">Yearly</ToggleButton>
+                  </ToggleButtonGroup>
+                </Grid>
+                <Grid item xs={12} sm={3}>
+                  <FormControl fullWidth size="small">
+                    <InputLabel id="specific-period-label">Period</InputLabel>
+                    <Select
+                      labelId="specific-period-label"
+                      id="specific-period"
+                      value={specificPeriod}
+                      label="Period"
+                      onChange={handleSpecificPeriodChange}
+                    >
+                      {getTimePeriodOptions().map(option => (
+                        <MenuItem key={option.value} value={option.value}>
+                          {option.label}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+              </Grid>
+            </Paper>
           </Box>
-        )}
-        
-        {/* Time period selector */}
-        <Paper sx={{ mb: 3, p: 2 }}>
-          <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, alignItems: { md: 'center' }, gap: 2 }}>
-            <Typography variant="subtitle1" sx={{ minWidth: 120 }}>Time Period:</Typography>
-            
-            <ToggleButtonGroup
-              value={timePeriod}
-              exclusive
-              onChange={handleTimePeriodChange}
-              aria-label="time period"
-              size="small"
-            >
-              <ToggleButton value="weekly" aria-label="weekly">
-                Weekly
-              </ToggleButton>
-              <ToggleButton value="monthly" aria-label="monthly">
-                Monthly
-              </ToggleButton>
-              <ToggleButton value="quarterly" aria-label="quarterly">
-                Quarterly
-              </ToggleButton>
-              <ToggleButton value="yearly" aria-label="yearly">
-                Yearly
-              </ToggleButton>
-            </ToggleButtonGroup>
-            
-            <FormControl sx={{ minWidth: 120 }} size="small">
-              <InputLabel id="specific-period-label">Period</InputLabel>
-              <Select
-                labelId="specific-period-label"
-                id="specific-period"
-                value={specificPeriod}
-                label="Period"
-                onChange={handleSpecificPeriodChange}
-              >
-                {getTimePeriodOptions().map(option => (
-                  <MenuItem key={option.value} value={option.value}>
-                    {option.label}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Box>
-        </Paper>
-        
-        {/* Primary Metric Section */}
-        <Paper 
-          elevation={3} 
-          sx={{ 
-            mb: 4, 
-            p: 3, 
-            borderTop: '4px solid #1976d2',
-            background: 'linear-gradient(to right, rgba(25, 118, 210, 0.05), rgba(25, 118, 210, 0.1))'
-          }}
-        >
-          <Typography variant="h5" gutterBottom sx={{ fontWeight: 'bold', color: '#1976d2' }}>
-            {domainAdapter.getPrimaryMetricName(timePeriod, processedData[domainAdapter.getPrimaryMetric().id])}
-          </Typography>
           
-          <Grid container spacing={3}>
-            <Grid item xs={12} md={4}>
-              <Box>
-                <Typography variant="subtitle1" color="textSecondary">Current</Typography>
-                <Typography variant="h3" sx={{ fontWeight: 'bold', color: '#1976d2' }}>
-                  {domainAdapter.formatPrimaryMetric(processedData[domainAdapter.getPrimaryMetric().id].current)}
-                </Typography>
-              </Box>
-            </Grid>
-            
-            <Grid item xs={12} md={4}>
-              <Box>
-                <Typography variant="subtitle1" color="textSecondary">Target</Typography>
-                <Typography variant="h3">
-                  {domainAdapter.formatPrimaryMetric(processedData[domainAdapter.getPrimaryMetric().id].target)}
-                </Typography>
-              </Box>
-            </Grid>
-            
-            <Grid item xs={12} md={4}>
-              <Box>
-                <Typography variant="subtitle1" color="textSecondary">Progress</Typography>
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                  <Box sx={{ width: '100%', mr: 1 }}>
-                    <LinearProgress 
-                      variant="determinate" 
-                      value={Math.min(processedData[domainAdapter.getPrimaryMetric().id].progress, 100)} 
-                      color={processedData[domainAdapter.getPrimaryMetric().id].relativeProgress >= 1 ? "success" : "primary"}
-                      sx={{ height: 10, borderRadius: 5 }}
-                    />
-                  </Box>
-                  <Box sx={{ minWidth: 35 }}>
-                    <Typography variant="body2" color="textSecondary">
-                      {`${processedData[domainAdapter.getPrimaryMetric().id].progress.toFixed(1)}%`}
-                    </Typography>
-                  </Box>
-                </Box>
-                
-                <Typography 
-                  variant="body1" 
-                  color={processedData[domainAdapter.getPrimaryMetric().id].relativeProgress >= 1 ? "success.main" : "error.main"}
-                  fontWeight="bold"
-                >
-                  {processedData[domainAdapter.getPrimaryMetric().id].relativeProgress >= 1 
-                    ? `${((processedData[domainAdapter.getPrimaryMetric().id].relativeProgress - 1) * 100).toFixed(1)}% ahead of target` 
-                    : `${((1 - processedData[domainAdapter.getPrimaryMetric().id].relativeProgress) * 100).toFixed(1)}% behind target`}
-                </Typography>
-              </Box>
-            </Grid>
-          </Grid>
-        </Paper>
-        
-        {/* KPI Summary Table */}
-        <Box sx={{ mb: 4 }}>
-          <Typography variant="h6" gutterBottom>
-            KPI Summary
-          </Typography>
-          <TableContainer component={Paper}>
-            <Table size="small">
-              <TableHead>
-                <TableRow>
-                  {domainAdapter.tableHeaders.map((header, index) => (
-                    <TableCell key={index}>{header.label}</TableCell>
-                  ))}
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {domainAdapter.getTableRows(processedData).map((row, rowIndex) => (
-                  <TableRow key={rowIndex}>
-                    {row.map((cell, cellIndex) => (
-                      <TableCell key={cellIndex}>
-                        {domainAdapter.formatTableCell(
-                          cell.value, 
-                          domainAdapter.tableHeaders[cellIndex].type,
-                          cell.metadata
-                        )}
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        </Box>
-        
-        {/* Render each section as an accordion */}
-        {sections.map(section => {
-          const sectionCharts = domainAdapter.getChartsForSection(section.id);
-          
-          if (sectionCharts.length === 0) return null;
-          
-          return (
+          {/* Dashboard Sections */}
+          {sections.map(section => (
             <Accordion 
               key={section.id}
               expanded={expanded.includes(section.id)}
-              onChange={handleAccordionChange(section.id)}
-              sx={{ 
-                mb: 2,
-                '&:before': { display: 'none' }, // Remove the default divider
-                boxShadow: 2
-              }}
+              onChange={() => handleToggleSection(section.id)}
+              sx={{ mb: 2 }}
             >
-              <AccordionSummary
-                expandIcon={<ExpandMoreIcon />}
-                aria-controls={`${section.id}-content`}
-                id={`${section.id}-header`}
-                sx={{ 
-                  backgroundColor: 'primary.light',
-                  color: 'primary.contrastText',
-                  '&.Mui-expanded': {
-                    minHeight: 56,
-                  }
-                }}
-              >
-                <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
-                  {section.name}
-                </Typography>
+              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                <Typography variant="h6">{section.name}</Typography>
               </AccordionSummary>
-              <AccordionDetails sx={{ p: 3 }}>
+              <AccordionDetails>
                 <Grid container spacing={3}>
-                  {sectionCharts.map(chart => (
-                    <Grid item xs={12} md={6} lg={4} key={chart.id}>
-                      {renderChart(chart, processedData[chart.id], domainAdapter)}
-                    </Grid>
-                  ))}
+                  {section.kpis.map(kpi => {
+                    const kpiData = processedData[kpi.id];
+                    if (!kpiData) return null;
+                    
+                    // Get charts for this KPI
+                    const charts = domainAdapter.getChartsForSection(section.id, kpi.id);
+                    
+                    return charts.map((chart, index) => (
+                      <Grid item xs={12} md={6} lg={4} key={`${kpi.id}-${index}`}>
+                        {renderChart(chart, kpiData, domainAdapter)}
+                      </Grid>
+                    ));
+                  })}
                 </Grid>
               </AccordionDetails>
             </Accordion>
-          );
-        })}
-      </Box>
-      
-      {/* Goal Setting Dialog */}
-      <Dialog
-        open={openGoalDialog}
-        onClose={handleCloseGoalDialog}
-        maxWidth="md"
-        fullWidth
-      >
-        <DialogTitle>
-          {currentGoal ? 'Edit Goal' : 'Set Goal'} for {selectedKpi?.name || ''}
-        </DialogTitle>
-        <DialogContent>
-          {selectedKpi && (
-            <GoalSettingForm
-              onSubmit={handleSubmitGoal}
-              initialData={currentGoal ? {
-                ...currentGoal,
-                kpi_id: selectedKpi.id
-              } : {
-                kpi_id: selectedKpi.id,
-                entity_type: 'department',
-                entity_id: 'sales',
-                time_period: 'yearly',
-                start_date: new Date(new Date().getFullYear(), 0, 1),
-                end_date: new Date(new Date().getFullYear(), 11, 31),
-                target_value: '',
-                stretch_target: '',
-                minimum_target: '',
-                status: 'active'
-              }}
-              kpiDefinitions={kpiDefinitions}
-              entities={entities}
-            />
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseGoalDialog}>Cancel</Button>
-        </DialogActions>
-      </Dialog>
-    </Box>
-  } catch (renderError) {
-    console.error('Error rendering TemplateDashboard:', renderError);
+          ))}
+          
+          {/* Goal Setting Dialog */}
+          <Dialog
+            open={openGoalDialog}
+            onClose={handleCloseGoalDialog}
+            maxWidth="md"
+            fullWidth
+          >
+            <DialogTitle>
+              {currentGoal ? 'Edit Goal' : 'Set Goal'} for {selectedKpi?.name || ''}
+            </DialogTitle>
+            <DialogContent>
+              {selectedKpi && (
+                <GoalSettingForm
+                  onSubmit={handleSubmitGoal}
+                  initialData={currentGoal ? {
+                    ...currentGoal,
+                    kpi_id: selectedKpi.id
+                  } : {
+                    kpi_id: selectedKpi.id,
+                    entity_type: 'department',
+                    entity_id: 'sales',
+                    time_period: 'yearly',
+                    start_date: new Date(new Date().getFullYear(), 0, 1),
+                    end_date: new Date(new Date().getFullYear(), 11, 31),
+                    target_value: '',
+                    stretch_target: '',
+                    minimum_target: '',
+                    status: 'active'
+                  }}
+                  kpiDefinitions={kpiDefinitions}
+                  entities={entities}
+                />
+              )}
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={handleCloseGoalDialog}>Cancel</Button>
+            </DialogActions>
+          </Dialog>
+        </Box>
+      );
+    } catch (renderError) {
+      console.error('Error rendering TemplateDashboard:', renderError);
+      return (
+        <Box sx={{ p: 3 }}>
+          <Typography variant="h4" color="error">
+            Dashboard Error
+          </Typography>
+          <Typography variant="body1">
+            There was an error rendering the dashboard. Please try refreshing the page.
+          </Typography>
+          <pre>{renderError.message}</pre>
+        </Box>
+      );
+    }
+  } catch (componentError) {
+    console.error('Fatal error in TemplateDashboard:', componentError);
     return (
       <Box sx={{ p: 3 }}>
         <Typography variant="h4" color="error">
           Dashboard Error
         </Typography>
         <Typography variant="body1">
-          There was an error rendering the dashboard. Please try refreshing the page.
+          There was a fatal error in the dashboard. Please try refreshing the page.
         </Typography>
-        <pre>{renderError.message}</pre>
+        <pre>{componentError.message}</pre>
       </Box>
     );
   }
 };
 
-// Add this debugging function at the top of your component
+// Add this debugging function
 const safeLog = (label, obj) => {
   try {
     console.log(`${label}:`, JSON.stringify(obj));
@@ -649,7 +548,7 @@ const safeLog = (label, obj) => {
   }
 };
 
-// Update the CardComponent with extensive logging
+// Card Component
 const CardComponent = ({ metric, data, adapter }) => {
   console.log('CardComponent rendering with data:', data);
   console.log('CardComponent metric:', metric);
@@ -700,7 +599,6 @@ const CardComponent = ({ metric, data, adapter }) => {
           </Box>
           <Box sx={{ minWidth: 35 }}>
             <Typography variant="body2" color="text.secondary">
-              {/* Wrap the formatProgress call in a try/catch */}
               {(() => {
                 try {
                   return formatProgress(data.progress);
@@ -795,6 +693,21 @@ const BarChartCard = ({ metric, data, adapter }) => {
 
 // Line Chart Card Component
 const LineChartCard = ({ metric, data, adapter }) => {
+  console.log('LineChartCard rendering with data:', data);
+  
+  // Format the progress value safely
+  const formatProgress = (progress) => {
+    if (progress === null || progress === undefined) {
+      return 'No target set';
+    }
+    try {
+      return `${Math.round(progress)}%`;
+    } catch (error) {
+      console.error('Error formatting progress:', error);
+      return 'N/A';
+    }
+  };
+  
   return (
     <Card elevation={2} sx={{ height: '100%' }}>
       <CardContent>
@@ -807,6 +720,27 @@ const LineChartCard = ({ metric, data, adapter }) => {
         <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
           Target: {data.target !== null ? adapter.formatValue(metric.id, data.target) : 'Not set'}
         </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+          <Box sx={{ width: '100%', mr: 1 }}>
+            <LinearProgress 
+              variant="determinate" 
+              value={data.progress !== null ? Math.min(data.progress, 100) : 0} 
+              color={data.status === 'positive' ? 'success' : data.status === 'negative' ? 'error' : 'primary'}
+            />
+          </Box>
+          <Box sx={{ minWidth: 35 }}>
+            <Typography variant="body2" color="text.secondary">
+              {(() => {
+                try {
+                  return formatProgress(data.progress);
+                } catch (e) {
+                  console.error('Error in formatProgress render:', e);
+                  return 'Error';
+                }
+              })()}
+            </Typography>
+          </Box>
+        </Box>
         <Box sx={{ height: 200, mt: 2 }}>
           <ResponsiveContainer width="100%" height="100%">
             <LineChart
@@ -835,6 +769,21 @@ const LineChartCard = ({ metric, data, adapter }) => {
 
 // Pie Chart Card Component
 const PieChartCard = ({ metric, data, adapter }) => {
+  console.log('PieChartCard rendering with data:', data);
+  
+  // Format the progress value safely
+  const formatProgress = (progress) => {
+    if (progress === null || progress === undefined) {
+      return 'No target set';
+    }
+    try {
+      return `${Math.round(progress)}%`;
+    } catch (error) {
+      console.error('Error formatting progress:', error);
+      return 'N/A';
+    }
+  };
+  
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
   
   // Create pie data from chart data
@@ -856,6 +805,27 @@ const PieChartCard = ({ metric, data, adapter }) => {
         <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
           Target: {data.target !== null ? adapter.formatValue(metric.id, data.target) : 'Not set'}
         </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+          <Box sx={{ width: '100%', mr: 1 }}>
+            <LinearProgress 
+              variant="determinate" 
+              value={data.progress !== null ? Math.min(data.progress, 100) : 0} 
+              color={data.status === 'positive' ? 'success' : data.status === 'negative' ? 'error' : 'primary'}
+            />
+          </Box>
+          <Box sx={{ minWidth: 35 }}>
+            <Typography variant="body2" color="text.secondary">
+              {(() => {
+                try {
+                  return formatProgress(data.progress);
+                } catch (e) {
+                  console.error('Error in formatProgress render:', e);
+                  return 'Error';
+                }
+              })()}
+            </Typography>
+          </Box>
+        </Box>
         <Box sx={{ height: 200, mt: 2 }}>
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
@@ -881,7 +851,7 @@ const PieChartCard = ({ metric, data, adapter }) => {
   );
 };
 
-// Add an error boundary component
+// Error boundary component
 class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
