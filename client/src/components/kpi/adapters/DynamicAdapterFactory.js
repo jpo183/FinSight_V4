@@ -395,14 +395,31 @@ const createDynamicAdapter = (domain, kpiConfigs) => {
     // Get charts for a specific section
     getChartsForSection: (sectionId) => {
       const sectionKpis = kpisBySection[sectionId] || [];
-      return sectionKpis.map(kpi => ({
-        id: kpi.id,
-        name: kpi.name,
-        description: kpi.description,
-        type: kpi.visualizationType || 'card', // Default to card if not specified
-        dataType: kpi.data_type,
-        unit: kpi.unit
-      }));
+      
+      // Create a map to track which KPIs we've already processed
+      const processedKpis = new Map();
+      
+      return sectionKpis
+        .filter(kpi => {
+          // Skip KPIs with no visualization type
+          if (!kpi.visualizationType) return false;
+          
+          // If we've already processed this KPI, skip it
+          if (processedKpis.has(kpi.name)) return false;
+          
+          // Mark this KPI as processed
+          processedKpis.set(kpi.name, true);
+          
+          return true;
+        })
+        .map(kpi => ({
+          id: kpi.id,
+          name: kpi.name,
+          description: kpi.description,
+          type: kpi.visualizationType || 'card', // Default to card if not specified
+          dataType: kpi.data_type,
+          unit: kpi.unit
+        }));
     },
     
     // Format value based on KPI data type
