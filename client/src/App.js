@@ -6,7 +6,7 @@ import Dashboard from './components/Dashboard/Dashboard';
 import Config from './components/Config/Config';
 import Sales from './components/Sales/Sales';
 import SalesAnalytics from './components/Sales/Analytics/SalesAnalytics';
-import SalesDashboard from './components/Sales/Dashboard/SalesDashboard';
+import SalesDashboard from './components/kpi/dashboards/SalesDashboard';
 import KpiManagementPage from './pages/Sales/KpiManagementPage';
 import { Box } from '@mui/material';
 

@@ -26,12 +26,18 @@ import {
 import goalService from '../../../services/kpi/goalService';
 import kpiService from '../../../services/kpi/kpiService';
 
-// This would be replaced with your actual sales data service
-import salesService from '../../components/kpi/services/salesService';
+// This import path is incorrect - it has 'components' twice
+// Change from:
+// import salesService from '../../components/kpi/services/salesService';
+// To:
+import salesService from '../services/salesService';
+
 import TemplateDashboard from './TemplateDashboard';
 import createDynamicAdapter from '../adapters/DynamicAdapterFactory';
-import { fetchKPIs } from '../services/kpiService';
-import { fetchSalesData } from '../services/salesService';
+
+// These imports are fine
+// import { fetchKPIs } from '../services/kpiService';
+// import { fetchSalesData } from '../services/salesService';
 
 const SalesDashboard = () => {
   const [loading, setLoading] = useState(true);
