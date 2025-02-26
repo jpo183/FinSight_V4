@@ -32,34 +32,37 @@ const TemplateDashboard = ({
   domainAdapter,  // Contains domain-specific logic and data
   data            // The actual data for the dashboard
 }) => {
-  try {
-    console.log('TemplateDashboard rendering with adapter:', domainAdapter);
-    console.log('TemplateDashboard data:', data);
-
-    // Check if any of the data is test data
-    const isTestData = Object.values(data).some(item => item.isTestData);
-
-    // Get sections from adapter
-    const sections = domainAdapter.getSections();
-    console.log('Sections to render:', sections);
-
-    // State to track expanded sections (default all expanded)
-    const [expanded, setExpanded] = useState(sections.map(s => s.id));
-    
-    // Time period state
-    const [timePeriod, setTimePeriod] = useState('monthly');
-    const [specificPeriod, setSpecificPeriod] = useState('');
-    
-    // State for goal setting dialog
-    const [openGoalDialog, setOpenGoalDialog] = useState(false);
-    const [selectedKpi, setSelectedKpi] = useState(null);
-    const [kpiDefinitions, setKpiDefinitions] = useState([]);
-    const [entities, setEntities] = useState([]);
-    const [currentGoal, setCurrentGoal] = useState(null);
-    const [goalsByKpi, setGoalsByKpi] = useState({});
-    
-    // Load KPI definitions and entities
-    useEffect(() => {
+  console.log('TemplateDashboard rendering with adapter:', domainAdapter);
+  console.log('TemplateDashboard data:', data);
+  
+  // Check if any of the data is test data
+  const isTestData = Object.values(data).some(item => item.isTestData);
+  
+  // Get sections from adapter
+  const sections = domainAdapter.getSections();
+  console.log('Sections to render:', sections);
+  
+  // State to track expanded sections (default all expanded)
+  const [expanded, setExpanded] = useState(sections.map(s => s.id));
+  
+  // Time period state
+  const [timePeriod, setTimePeriod] = useState('monthly');
+  const [specificPeriod, setSpecificPeriod] = useState('');
+  
+  // State for goal setting dialog
+  const [openGoalDialog, setOpenGoalDialog] = useState(false);
+  const [selectedKpi, setSelectedKpi] = useState(null);
+  const [kpiDefinitions, setKpiDefinitions] = useState([]);
+  const [entities, setEntities] = useState([]);
+  const [currentGoal, setCurrentGoal] = useState(null);
+  const [goalsByKpi, setGoalsByKpi] = useState({});
+  
+  // Error state
+  const [error, setError] = useState(null);
+  
+  // Load KPI definitions and entities
+  useEffect(() => {
+    try {
       // Load KPI definitions from localStorage
       const storedKpis = localStorage.getItem('salesKpis');
       const kpis = storedKpis ? JSON.parse(storedKpis) : [];
@@ -92,451 +95,441 @@ const TemplateDashboard = ({
         });
         setGoalsByKpi(goalsMap);
       }
-    }, []);
+    } catch (err) {
+      console.error("Error in useEffect:", err);
+      setError(err);
+    }
+  }, []);
+  
+  // Set specific period options based on time period
+  useEffect(() => {
+    if (timePeriod === 'weekly') {
+      setSpecificPeriod('1');
+    } else if (timePeriod === 'monthly') {
+      setSpecificPeriod('1');
+    } else if (timePeriod === 'quarterly') {
+      setSpecificPeriod('1');
+    } else if (timePeriod === 'yearly') {
+      setSpecificPeriod(new Date().getFullYear().toString());
+    }
+  }, [timePeriod]);
+  
+  // Handle time period change
+  const handleTimePeriodChange = (event, newPeriod) => {
+    if (newPeriod !== null) {
+      setTimePeriod(newPeriod);
+    }
+  };
+  
+  // Handle specific period change
+  const handleSpecificPeriodChange = (event) => {
+    setSpecificPeriod(event.target.value);
+  };
+  
+  // Get time period options based on selected period type
+  const getTimePeriodOptions = () => {
+    if (timePeriod === 'weekly') {
+      return Array.from({ length: 52 }, (_, i) => ({
+        value: (i + 1).toString(),
+        label: `Week ${i + 1}`
+      }));
+    } else if (timePeriod === 'monthly') {
+      const months = [
+        'January', 'February', 'March', 'April', 'May', 'June',
+        'July', 'August', 'September', 'October', 'November', 'December'
+      ];
+      return months.map((month, i) => ({
+        value: (i + 1).toString(),
+        label: month
+      }));
+    } else if (timePeriod === 'quarterly') {
+      return Array.from({ length: 4 }, (_, i) => ({
+        value: (i + 1).toString(),
+        label: `Q${i + 1}`
+      }));
+    } else if (timePeriod === 'yearly') {
+      const currentYear = new Date().getFullYear();
+      return Array.from({ length: 3 }, (_, i) => ({
+        value: (currentYear - 2 + i).toString(),
+        label: (currentYear - 2 + i).toString()
+      }));
+    }
+    return [];
+  };
+  
+  // Process data based on selected time period
+  const processData = (data) => {
+    if (!data) {
+      console.warn('No data provided to processData');
+      return {};
+    }
     
-    // Set specific period options based on time period
-    useEffect(() => {
-      if (timePeriod === 'weekly') {
-        setSpecificPeriod('1');
-      } else if (timePeriod === 'monthly') {
-        setSpecificPeriod('1');
-      } else if (timePeriod === 'quarterly') {
-        setSpecificPeriod('1');
-      } else if (timePeriod === 'yearly') {
-        setSpecificPeriod(new Date().getFullYear().toString());
-      }
-    }, [timePeriod]);
+    const processedData = {};
     
-    // Handle time period change
-    const handleTimePeriodChange = (event, newPeriod) => {
-      if (newPeriod !== null) {
-        setTimePeriod(newPeriod);
-      }
-    };
-    
-    // Handle specific period change
-    const handleSpecificPeriodChange = (event) => {
-      setSpecificPeriod(event.target.value);
-    };
-    
-    // Get time period options based on selected period type
-    const getTimePeriodOptions = () => {
-      if (timePeriod === 'weekly') {
-        return Array.from({ length: 52 }, (_, i) => ({
-          value: (i + 1).toString(),
-          label: `Week ${i + 1}`
-        }));
-      } else if (timePeriod === 'monthly') {
-        const months = [
-          'January', 'February', 'March', 'April', 'May', 'June',
-          'July', 'August', 'September', 'October', 'November', 'December'
-        ];
-        return months.map((month, i) => ({
-          value: (i + 1).toString(),
-          label: month
-        }));
-      } else if (timePeriod === 'quarterly') {
-        return Array.from({ length: 4 }, (_, i) => ({
-          value: (i + 1).toString(),
-          label: `Q${i + 1}`
-        }));
-      } else if (timePeriod === 'yearly') {
-        const currentYear = new Date().getFullYear();
-        return Array.from({ length: 3 }, (_, i) => ({
-          value: (currentYear - 2 + i).toString(),
-          label: (currentYear - 2 + i).toString()
-        }));
-      }
-      return [];
-    };
-    
-    // Process data based on selected time period
-    const processData = (data) => {
-      if (!data) {
-        console.warn('No data provided to processData');
-        return {};
+    Object.entries(data).forEach(([kpiId, kpiData]) => {
+      if (!kpiData) {
+        console.warn(`No data for KPI: ${kpiId}`);
+        return;
       }
       
-      const processedData = {};
+      let filteredData = [];
       
-      Object.entries(data).forEach(([kpiId, kpiData]) => {
-        if (!kpiData) {
-          console.warn(`No data for KPI: ${kpiId}`);
-          return;
+      try {
+        // Select the right data array based on time period
+        if (timePeriod === 'weekly' && kpiData.weeklyData) {
+          filteredData = [...kpiData.weeklyData];
+        } else if (timePeriod === 'monthly' && kpiData.monthlyData) {
+          filteredData = [...kpiData.monthlyData];
+        } else if (timePeriod === 'quarterly' && kpiData.quarterlyData) {
+          filteredData = [...kpiData.quarterlyData];
+        } else if (timePeriod === 'yearly' && kpiData.yearlyData) {
+          filteredData = [...kpiData.yearlyData];
+        } else if (kpiData.chartData) {
+          filteredData = [...kpiData.chartData];
         }
         
-        let filteredData = [];
+        // Filter by specific period if selected
+        if (specificPeriod && filteredData.length > 0) {
+          if (timePeriod === 'yearly') {
+            filteredData = filteredData.filter(item => item && item.name === specificPeriod);
+          } else {
+            const periodIndex = parseInt(specificPeriod, 10) - 1;
+            if (periodIndex >= 0 && periodIndex < filteredData.length) {
+              filteredData = [filteredData[periodIndex]];
+            }
+          }
+        }
         
-        try {
-          // Select the right data array based on time period
-          if (timePeriod === 'weekly' && kpiData.weeklyData) {
-            filteredData = [...kpiData.weeklyData];
-          } else if (timePeriod === 'monthly' && kpiData.monthlyData) {
-            filteredData = [...kpiData.monthlyData];
-          } else if (timePeriod === 'quarterly' && kpiData.quarterlyData) {
-            filteredData = [...kpiData.quarterlyData];
-          } else if (timePeriod === 'yearly' && kpiData.yearlyData) {
-            filteredData = [...kpiData.yearlyData];
-          } else if (kpiData.chartData) {
-            filteredData = [...kpiData.chartData];
+        // Create a safe copy of the KPI data
+        processedData[kpiId] = {
+          ...kpiData,
+          chartData: filteredData,
+          current: kpiData.current || 0,
+          target: kpiData.target || null,
+          progress: kpiData.progress || null,
+          status: kpiData.status || 'neutral'
+        };
+        
+        // Update current value based on filtered data if available
+        if (filteredData.length > 0 && filteredData[0]) {
+          if (filteredData[0].value !== undefined) {
+            processedData[kpiId].current = filteredData[0].value;
+          }
+          if (filteredData[0].target !== undefined) {
+            processedData[kpiId].target = filteredData[0].target;
           }
           
-          // Filter by specific period if selected
-          if (specificPeriod && filteredData.length > 0) {
-            if (timePeriod === 'yearly') {
-              filteredData = filteredData.filter(item => item && item.name === specificPeriod);
-            } else {
-              const periodIndex = parseInt(specificPeriod, 10) - 1;
-              if (periodIndex >= 0 && periodIndex < filteredData.length) {
-                filteredData = [filteredData[periodIndex]];
-              }
-            }
-          }
-          
-          // Create a safe copy of the KPI data
-          processedData[kpiId] = {
-            ...kpiData,
-            chartData: filteredData,
-            current: kpiData.current || 0,
-            target: kpiData.target || null,
-            progress: kpiData.progress || null,
-            status: kpiData.status || 'neutral'
-          };
-          
-          // Update current value based on filtered data if available
-          if (filteredData.length > 0 && filteredData[0]) {
-            if (filteredData[0].value !== undefined) {
-              processedData[kpiId].current = filteredData[0].value;
-            }
-            if (filteredData[0].target !== undefined) {
-              processedData[kpiId].target = filteredData[0].target;
-            }
+          // Recalculate progress if we have both current and target
+          if (processedData[kpiId].current !== null && 
+              processedData[kpiId].target !== null && 
+              processedData[kpiId].target > 0) {
+            processedData[kpiId].progress = Math.round((processedData[kpiId].current / processedData[kpiId].target) * 100);
             
-            // Recalculate progress if we have both current and target
-            if (processedData[kpiId].current !== null && 
-                processedData[kpiId].target !== null && 
-                processedData[kpiId].target > 0) {
-              processedData[kpiId].progress = Math.round((processedData[kpiId].current / processedData[kpiId].target) * 100);
-              
-              // Update status based on progress
-              if (processedData[kpiId].progress >= 100) {
-                processedData[kpiId].status = 'positive';
-              } else if (processedData[kpiId].progress >= 80) {
-                processedData[kpiId].status = 'neutral';
-              } else {
-                processedData[kpiId].status = 'negative';
-              }
+            // Update status based on progress
+            if (processedData[kpiId].progress >= 100) {
+              processedData[kpiId].status = 'positive';
+            } else if (processedData[kpiId].progress >= 80) {
+              processedData[kpiId].status = 'neutral';
+            } else {
+              processedData[kpiId].status = 'negative';
             }
           }
-        } catch (error) {
-          console.error(`Error processing data for KPI ${kpiId}:`, error);
-          // Provide fallback data
-          processedData[kpiId] = {
-            ...kpiData,
-            chartData: [],
-            current: kpiData.current || 0,
-            target: kpiData.target || null,
-            progress: null,
-            status: 'neutral'
-          };
         }
-      });
-      
-      return processedData;
-    };
+      } catch (error) {
+        console.error(`Error processing data for KPI ${kpiId}:`, error);
+        // Provide fallback data
+        processedData[kpiId] = {
+          ...kpiData,
+          chartData: [],
+          current: kpiData.current || 0,
+          target: kpiData.target || null,
+          progress: null,
+          status: 'neutral'
+        };
+      }
+    });
     
-    // Handle opening the goal setting dialog
-    const handleOpenGoalDialog = (kpiId) => {
-      const kpi = kpiDefinitions.find(k => k.id === kpiId);
-      setSelectedKpi(kpi);
-      
-      // Check if there's an existing goal
+    return processedData;
+  };
+  
+  // Handle opening the goal setting dialog
+  const handleOpenGoalDialog = (kpiId) => {
+    const kpi = kpiDefinitions.find(k => k.id === kpiId);
+    setSelectedKpi(kpi);
+    
+    // Check if there's an existing goal
+    const storedGoals = localStorage.getItem('salesGoals');
+    const goals = storedGoals ? JSON.parse(storedGoals) : [];
+    const existingGoal = goals.find(g => g.kpi_id === kpiId && g.status === 'active');
+    
+    setCurrentGoal(existingGoal || null);
+    setOpenGoalDialog(true);
+  };
+  
+  // Handle closing the goal setting dialog
+  const handleCloseGoalDialog = () => {
+    setOpenGoalDialog(false);
+    setSelectedKpi(null);
+    setCurrentGoal(null);
+  };
+  
+  // Handle submitting the goal form
+  const handleSubmitGoal = async (goalData) => {
+    try {
+      // For now, just store in localStorage
       const storedGoals = localStorage.getItem('salesGoals');
       const goals = storedGoals ? JSON.parse(storedGoals) : [];
-      const existingGoal = goals.find(g => g.kpi_id === kpiId && g.status === 'active');
       
-      setCurrentGoal(existingGoal || null);
-      setOpenGoalDialog(true);
-    };
-    
-    // Handle closing the goal setting dialog
-    const handleCloseGoalDialog = () => {
-      setOpenGoalDialog(false);
-      setSelectedKpi(null);
-      setCurrentGoal(null);
-    };
-    
-    // Handle submitting the goal form
-    const handleSubmitGoal = async (goalData) => {
-      try {
-        // For now, just store in localStorage
-        const storedGoals = localStorage.getItem('salesGoals');
-        const goals = storedGoals ? JSON.parse(storedGoals) : [];
-        
-        // Check if we're updating an existing goal
-        const existingIndex = goals.findIndex(g => g.id === goalData.id);
-        
-        if (existingIndex >= 0) {
-          // Update existing goal
-          goals[existingIndex] = goalData;
-        } else {
-          // Add new goal with generated ID
-          goalData.id = Date.now().toString();
-          goals.push(goalData);
-        }
-        
-        // Save back to localStorage
-        localStorage.setItem('salesGoals', JSON.stringify(goals));
-        
-        // Update the goals by KPI map
-        setGoalsByKpi(prev => ({
-          ...prev,
-          [goalData.kpi_id]: goalData
-        }));
-        
-        // Close the dialog
-        handleCloseGoalDialog();
-        
-        // Refresh the dashboard data
-        // In a real app, you'd probably refetch data from the server
-        // For now, we'll just force a re-render
-        setTimePeriod(prev => prev);
-        
-      } catch (error) {
-        console.error('Error saving goal:', error);
-      }
-    };
-    
-    // Toggle section expansion
-    const handleToggleSection = (sectionId) => {
-      setExpanded(prev => {
-        if (prev.includes(sectionId)) {
-          return prev.filter(id => id !== sectionId);
-        } else {
-          return [...prev, sectionId];
-        }
-      });
-    };
-    
-    // Process the data based on selected time period
-    const processedData = processData(data);
-    
-    // Render a chart based on its type
-    const renderChart = (chart, data, adapter) => {
-      if (!data) {
-        console.warn(`No data available for chart: ${chart.id}`);
-        return null;
+      // Check if we're updating an existing goal
+      const existingIndex = goals.findIndex(g => g.id === goalData.id);
+      
+      if (existingIndex >= 0) {
+        // Update existing goal
+        goals[existingIndex] = goalData;
+      } else {
+        // Add new goal with generated ID
+        goalData.id = Date.now().toString();
+        goals.push(goalData);
       }
       
-      // Ensure chartData exists and has at least one item
-      if (!data.chartData || data.chartData.length === 0) {
-        console.warn(`No chart data available for chart: ${chart.id}`);
-        return (
-          <Card elevation={2} sx={{ height: '100%' }}>
-            <CardContent>
-              <Typography variant="h6" color="text.secondary" gutterBottom>
-                {chart.name}
-              </Typography>
-              <Typography variant="body1" color="text.secondary">
-                No data available for the selected time period.
-              </Typography>
-              <Button
-                variant="outlined"
-                size="small"
-                startIcon={<EditIcon />}
-                onClick={() => handleOpenGoalDialog(chart.id)}
-                sx={{ mt: 2 }}
-              >
-                {data.target !== null ? 'Edit Goal' : 'Set Goal'}
-              </Button>
-            </CardContent>
-          </Card>
-        );
+      // Save back to localStorage
+      localStorage.setItem('salesGoals', JSON.stringify(goals));
+      
+      // Update the goals by KPI map
+      setGoalsByKpi(prev => ({
+        ...prev,
+        [goalData.kpi_id]: goalData
+      }));
+      
+      // Close the dialog
+      handleCloseGoalDialog();
+      
+      // Refresh the dashboard data
+      // In a real app, you'd probably refetch data from the server
+      // For now, we'll just force a re-render
+      setTimePeriod(prev => prev);
+      
+    } catch (error) {
+      console.error('Error saving goal:', error);
+    }
+  };
+  
+  // Toggle section expansion
+  const handleToggleSection = (sectionId) => {
+    setExpanded(prev => {
+      if (prev.includes(sectionId)) {
+        return prev.filter(id => id !== sectionId);
+      } else {
+        return [...prev, sectionId];
       }
-      
-      const chartType = chart.type.toLowerCase();
-      
-      // Add a Set Goal button to each chart
-      const chartComponent = (
-        <Box sx={{ position: 'relative' }}>
-          {chartType === 'card' && <CardComponent metric={chart} data={data} adapter={adapter} />}
-          {chartType === 'barchart' && <BarChartCard metric={chart} data={data} adapter={adapter} />}
-          {chartType === 'linechart' && <LineChartCard metric={chart} data={data} adapter={adapter} />}
-          {chartType === 'piechart' && <PieChartCard metric={chart} data={data} adapter={adapter} />}
-          
-          <Button
-            variant="outlined"
-            size="small"
-            startIcon={<EditIcon />}
-            onClick={() => handleOpenGoalDialog(chart.id)}
-            sx={{ position: 'absolute', top: 10, right: 10 }}
-          >
-            {data.target !== null ? 'Edit Goal' : 'Set Goal'}
-          </Button>
-        </Box>
-      );
-      
-      return chartComponent;
-    };
+    });
+  };
+  
+  // Process the data based on selected time period
+  const processedData = processData(data);
+  
+  // Render a chart based on its type
+  const renderChart = (chart, data, adapter) => {
+    if (!data) {
+      console.warn(`No data available for chart: ${chart.id}`);
+      return null;
+    }
     
-    // Wrap the return statement in a try/catch
-    try {
+    // Ensure chartData exists and has at least one item
+    if (!data.chartData || data.chartData.length === 0) {
+      console.warn(`No chart data available for chart: ${chart.id}`);
       return (
-        <Box sx={{ p: 3 }}>
-          {/* Dashboard Header */}
-          <Box sx={{ mb: 3 }}>
-            <Typography variant="h4" component="h1" gutterBottom>
-              {domainAdapter.dashboardTitle}
+        <Card elevation={2} sx={{ height: '100%' }}>
+          <CardContent>
+            <Typography variant="h6" color="text.secondary" gutterBottom>
+              {chart.name}
             </Typography>
-            
-            {isTestData && (
-              <Paper sx={{ p: 2, mb: 2, bgcolor: 'info.light', color: 'info.contrastText' }}>
-                <Typography variant="body1">
-                  This dashboard is displaying test data. In a production environment, this would be replaced with real data from your systems.
-                </Typography>
-              </Paper>
-            )}
-            
-            {/* Time Period Controls */}
-            <Paper sx={{ p: 2 }}>
-              <Grid container spacing={2} alignItems="center">
-                <Grid item>
-                  <Typography variant="body1">Time Period:</Typography>
-                </Grid>
-                <Grid item>
-                  <ToggleButtonGroup
-                    value={timePeriod}
-                    exclusive
-                    onChange={handleTimePeriodChange}
-                    size="small"
-                  >
-                    <ToggleButton value="weekly">Weekly</ToggleButton>
-                    <ToggleButton value="monthly">Monthly</ToggleButton>
-                    <ToggleButton value="quarterly">Quarterly</ToggleButton>
-                    <ToggleButton value="yearly">Yearly</ToggleButton>
-                  </ToggleButtonGroup>
-                </Grid>
-                <Grid item xs={12} sm={3}>
-                  <FormControl fullWidth size="small">
-                    <InputLabel id="specific-period-label">Period</InputLabel>
-                    <Select
-                      labelId="specific-period-label"
-                      id="specific-period"
-                      value={specificPeriod}
-                      label="Period"
-                      onChange={handleSpecificPeriodChange}
-                    >
-                      {getTimePeriodOptions().map(option => (
-                        <MenuItem key={option.value} value={option.value}>
-                          {option.label}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </Grid>
-              </Grid>
-            </Paper>
-          </Box>
-          
-          {/* Dashboard Sections */}
-          {sections.map(section => (
-            <Accordion 
-              key={section.id}
-              expanded={expanded.includes(section.id)}
-              onChange={() => handleToggleSection(section.id)}
-              sx={{ mb: 2 }}
+            <Typography variant="body1" color="text.secondary">
+              No data available for the selected time period.
+            </Typography>
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<EditIcon />}
+              onClick={() => handleOpenGoalDialog(chart.id)}
+              sx={{ mt: 2 }}
             >
-              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                <Typography variant="h6">{section.name}</Typography>
-              </AccordionSummary>
-              <AccordionDetails>
-                <Grid container spacing={3}>
-                  {section.kpis.map(kpi => {
-                    const kpiData = processedData[kpi.id];
-                    if (!kpiData) return null;
-                    
-                    // Get charts for this KPI
-                    const charts = domainAdapter.getChartsForSection(section.id, kpi.id);
-                    
-                    return charts.map((chart, index) => (
-                      <Grid item xs={12} md={6} lg={4} key={`${kpi.id}-${index}`}>
-                        {renderChart(chart, kpiData, domainAdapter)}
-                      </Grid>
-                    ));
-                  })}
-                </Grid>
-              </AccordionDetails>
-            </Accordion>
-          ))}
-          
-          {/* Goal Setting Dialog */}
-          <Dialog
-            open={openGoalDialog}
-            onClose={handleCloseGoalDialog}
-            maxWidth="md"
-            fullWidth
-          >
-            <DialogTitle>
-              {currentGoal ? 'Edit Goal' : 'Set Goal'} for {selectedKpi?.name || ''}
-            </DialogTitle>
-            <DialogContent>
-              {selectedKpi && (
-                <GoalSettingForm
-                  onSubmit={handleSubmitGoal}
-                  initialData={currentGoal ? {
-                    ...currentGoal,
-                    kpi_id: selectedKpi.id
-                  } : {
-                    kpi_id: selectedKpi.id,
-                    entity_type: 'department',
-                    entity_id: 'sales',
-                    time_period: 'yearly',
-                    start_date: new Date(new Date().getFullYear(), 0, 1),
-                    end_date: new Date(new Date().getFullYear(), 11, 31),
-                    target_value: '',
-                    stretch_target: '',
-                    minimum_target: '',
-                    status: 'active'
-                  }}
-                  kpiDefinitions={kpiDefinitions}
-                  entities={entities}
-                />
-              )}
-            </DialogContent>
-            <DialogActions>
-              <Button onClick={handleCloseGoalDialog}>Cancel</Button>
-            </DialogActions>
-          </Dialog>
-        </Box>
-      );
-    } catch (renderError) {
-      console.error('Error rendering TemplateDashboard:', renderError);
-      return (
-        <Box sx={{ p: 3 }}>
-          <Typography variant="h4" color="error">
-            Dashboard Error
-          </Typography>
-          <Typography variant="body1">
-            There was an error rendering the dashboard. Please try refreshing the page.
-          </Typography>
-          <pre>{renderError.message}</pre>
-        </Box>
+              {data.target !== null ? 'Edit Goal' : 'Set Goal'}
+            </Button>
+          </CardContent>
+        </Card>
       );
     }
-  } catch (componentError) {
-    console.error('Fatal error in TemplateDashboard:', componentError);
+    
+    const chartType = chart.type.toLowerCase();
+    
+    // Add a Set Goal button to each chart
+    const chartComponent = (
+      <Box sx={{ position: 'relative' }}>
+        {chartType === 'card' && <CardComponent metric={chart} data={data} adapter={adapter} />}
+        {chartType === 'barchart' && <BarChartCard metric={chart} data={data} adapter={adapter} />}
+        {chartType === 'linechart' && <LineChartCard metric={chart} data={data} adapter={adapter} />}
+        {chartType === 'piechart' && <PieChartCard metric={chart} data={data} adapter={adapter} />}
+        
+        <Button
+          variant="outlined"
+          size="small"
+          startIcon={<EditIcon />}
+          onClick={() => handleOpenGoalDialog(chart.id)}
+          sx={{ position: 'absolute', top: 10, right: 10 }}
+        >
+          {data.target !== null ? 'Edit Goal' : 'Set Goal'}
+        </Button>
+      </Box>
+    );
+    
+    return chartComponent;
+  };
+  
+  // If there's an error, show error UI
+  if (error) {
     return (
       <Box sx={{ p: 3 }}>
         <Typography variant="h4" color="error">
           Dashboard Error
         </Typography>
         <Typography variant="body1">
-          There was a fatal error in the dashboard. Please try refreshing the page.
+          There was an error loading the dashboard. Please try refreshing the page.
         </Typography>
-        <pre>{componentError.message}</pre>
+        <pre>{error.message}</pre>
       </Box>
     );
   }
+  
+  // Render the dashboard UI (moved outside of try/catch)
+  return (
+    <Box sx={{ p: 3 }}>
+      {/* Dashboard Header */}
+      <Box sx={{ mb: 3 }}>
+        <Typography variant="h4" component="h1" gutterBottom>
+          {domainAdapter.dashboardTitle}
+        </Typography>
+        
+        {isTestData && (
+          <Paper sx={{ p: 2, mb: 2, bgcolor: 'info.light', color: 'info.contrastText' }}>
+            <Typography variant="body1">
+              This dashboard is displaying test data. In a production environment, this would be replaced with real data from your systems.
+            </Typography>
+          </Paper>
+        )}
+        
+        {/* Time Period Controls */}
+        <Paper sx={{ p: 2 }}>
+          <Grid container spacing={2} alignItems="center">
+            <Grid item>
+              <Typography variant="body1">Time Period:</Typography>
+            </Grid>
+            <Grid item>
+              <ToggleButtonGroup
+                value={timePeriod}
+                exclusive
+                onChange={handleTimePeriodChange}
+                size="small"
+              >
+                <ToggleButton value="weekly">Weekly</ToggleButton>
+                <ToggleButton value="monthly">Monthly</ToggleButton>
+                <ToggleButton value="quarterly">Quarterly</ToggleButton>
+                <ToggleButton value="yearly">Yearly</ToggleButton>
+              </ToggleButtonGroup>
+            </Grid>
+            <Grid item xs={12} sm={3}>
+              <FormControl fullWidth size="small">
+                <InputLabel id="specific-period-label">Period</InputLabel>
+                <Select
+                  labelId="specific-period-label"
+                  id="specific-period"
+                  value={specificPeriod}
+                  label="Period"
+                  onChange={handleSpecificPeriodChange}
+                >
+                  {getTimePeriodOptions().map(option => (
+                    <MenuItem key={option.value} value={option.value}>
+                      {option.label}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+          </Grid>
+        </Paper>
+      </Box>
+      
+      {/* Dashboard Sections */}
+      {sections.map(section => (
+        <Accordion 
+          key={section.id}
+          expanded={expanded.includes(section.id)}
+          onChange={() => handleToggleSection(section.id)}
+          sx={{ mb: 2 }}
+        >
+          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+            <Typography variant="h6">{section.name}</Typography>
+          </AccordionSummary>
+          <AccordionDetails>
+            <Grid container spacing={3}>
+              {section.kpis.map(kpi => {
+                const kpiData = processedData[kpi.id];
+                if (!kpiData) return null;
+                
+                // Get charts for this KPI
+                const charts = domainAdapter.getChartsForSection(section.id, kpi.id);
+                
+                return charts.map((chart, index) => (
+                  <Grid item xs={12} md={6} lg={4} key={`${kpi.id}-${index}`}>
+                    {renderChart(chart, kpiData, domainAdapter)}
+                  </Grid>
+                ));
+              })}
+            </Grid>
+          </AccordionDetails>
+        </Accordion>
+      ))}
+      
+      {/* Goal Setting Dialog */}
+      <Dialog
+        open={openGoalDialog}
+        onClose={handleCloseGoalDialog}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>
+          {currentGoal ? 'Edit Goal' : 'Set Goal'} for {selectedKpi?.name || ''}
+        </DialogTitle>
+        <DialogContent>
+          {selectedKpi && (
+            <GoalSettingForm
+              onSubmit={handleSubmitGoal}
+              initialData={currentGoal ? {
+                ...currentGoal,
+                kpi_id: selectedKpi.id
+              } : {
+                kpi_id: selectedKpi.id,
+                entity_type: 'department',
+                entity_id: 'sales',
+                time_period: 'yearly',
+                start_date: new Date(new Date().getFullYear(), 0, 1),
+                end_date: new Date(new Date().getFullYear(), 11, 31),
+                target_value: '',
+                stretch_target: '',
+                minimum_target: '',
+                status: 'active'
+              }}
+              kpiDefinitions={kpiDefinitions}
+              entities={entities}
+            />
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseGoalDialog}>Cancel</Button>
+        </DialogActions>
+      </Dialog>
+    </Box>
+  );
 };
 
 // Add this debugging function
