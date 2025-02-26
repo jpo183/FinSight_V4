@@ -2,15 +2,12 @@ import React, { useState, useEffect } from 'react';
 import {
   AppBar, Toolbar, Typography, Box, Paper, Grid, TableContainer,
   Table, TableHead, TableBody, TableRow, TableCell, Accordion,
-  AccordionSummary, AccordionDetails, Card, CardContent, LinearProgress, Divider
+  AccordionSummary, AccordionDetails, Card, CardContent, LinearProgress, Divider,
+  ToggleButtonGroup, ToggleButton, FormControl, InputLabel, Select, MenuItem,
+  Button, Dialog, DialogTitle, DialogContent, DialogActions
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
-import ToggleButton from '@mui/material/ToggleButton';
-import FormControl from '@mui/material/FormControl';
-import InputLabel from '@mui/material/InputLabel';
-import Select from '@mui/material/Select';
-import MenuItem from '@mui/material/MenuItem';
+import EditIcon from '@mui/icons-material/Edit';
 import CalendarViewMonthIcon from '@mui/icons-material/CalendarViewMonth';
 import DateRangeIcon from '@mui/icons-material/DateRange';
 import EventIcon from '@mui/icons-material/Event';
@@ -29,6 +26,7 @@ import {
   Pie,
   Cell
 } from 'recharts';
+import GoalSettingForm from '../goals/GoalSettingForm';
 
 const TemplateDashboard = ({ 
   domainAdapter,  // Contains domain-specific logic and data
@@ -50,6 +48,49 @@ const TemplateDashboard = ({
   // Time period state
   const [timeRange, setTimeRange] = useState('monthly');
   const [timeValue, setTimeValue] = useState(1); // Default to first period
+  
+  // State for goal setting dialog
+  const [openGoalDialog, setOpenGoalDialog] = useState(false);
+  const [selectedKpi, setSelectedKpi] = useState(null);
+  const [kpiDefinitions, setKpiDefinitions] = useState([]);
+  const [entities, setEntities] = useState([]);
+  const [currentGoal, setCurrentGoal] = useState(null);
+  
+  // Load KPI definitions and entities
+  useEffect(() => {
+    // Load KPI definitions from localStorage
+    const storedKpis = localStorage.getItem('salesKpis');
+    const kpis = storedKpis ? JSON.parse(storedKpis) : [];
+    setKpiDefinitions(kpis);
+    
+    // Mock entities for now
+    setEntities([
+      { id: 'sales', name: 'Sales Department', type: 'department' },
+      { id: 'marketing', name: 'Marketing Department', type: 'department' },
+      { id: 'north', name: 'North Region', type: 'team' },
+      { id: 'south', name: 'South Region', type: 'team' },
+      { id: 'east', name: 'East Region', type: 'team' },
+      { id: 'west', name: 'West Region', type: 'team' },
+      { id: 'user1', name: 'John Doe', type: 'individual' },
+      { id: 'user2', name: 'Jane Smith', type: 'individual' },
+      { id: 'org', name: 'Entire Organization', type: 'organization' }
+    ]);
+    
+    // Load goals to find existing ones
+    const storedGoals = localStorage.getItem('salesGoals');
+    const goals = storedGoals ? JSON.parse(storedGoals) : [];
+    
+    // Set current goals for KPIs
+    if (goals.length > 0) {
+      const goalsByKpi = {};
+      goals.forEach(goal => {
+        if (goal.status === 'active') {
+          goalsByKpi[goal.kpi_id] = goal;
+        }
+      });
+      setCurrentGoals(goalsByKpi);
+    }
+  }, []);
   
   // Get time period options based on selected range
   const getTimePeriodOptions = () => {
@@ -178,6 +219,67 @@ const TemplateDashboard = ({
   // Get table rows from adapter
   const tableRows = domainAdapter.getTableRows ? domainAdapter.getTableRows(processedData) : [];
   const tableHeaders = domainAdapter.tableHeaders || [];
+  
+  // Handle opening the goal setting dialog
+  const handleOpenGoalDialog = (kpiId) => {
+    const kpi = kpiDefinitions.find(k => k.id === kpiId);
+    setSelectedKpi(kpi);
+    
+    // Check if there's an existing goal
+    const storedGoals = localStorage.getItem('salesGoals');
+    const goals = storedGoals ? JSON.parse(storedGoals) : [];
+    const existingGoal = goals.find(g => g.kpi_id === kpiId && g.status === 'active');
+    
+    setCurrentGoal(existingGoal || null);
+    setOpenGoalDialog(true);
+  };
+  
+  // Handle closing the goal setting dialog
+  const handleCloseGoalDialog = () => {
+    setOpenGoalDialog(false);
+    setSelectedKpi(null);
+    setCurrentGoal(null);
+  };
+  
+  // Handle submitting a goal
+  const handleSubmitGoal = async (goalData) => {
+    try {
+      // Load existing goals
+      const storedGoals = localStorage.getItem('salesGoals');
+      const goals = storedGoals ? JSON.parse(storedGoals) : [];
+      
+      let updatedGoals = [...goals];
+      
+      if (currentGoal) {
+        // Editing existing goal
+        const index = updatedGoals.findIndex(g => g.id === currentGoal.id);
+        if (index !== -1) {
+          updatedGoals[index] = { ...goalData, id: currentGoal.id };
+        }
+      } else {
+        // Creating new goal
+        const newGoal = {
+          ...goalData,
+          id: Date.now().toString(),
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+        updatedGoals.push(newGoal);
+      }
+      
+      // Save to localStorage
+      localStorage.setItem('salesGoals', JSON.stringify(updatedGoals));
+      
+      // Close the dialog
+      handleCloseGoalDialog();
+      
+      // Reload the page to refresh data
+      window.location.reload();
+    } catch (err) {
+      console.error('Error saving goal:', err);
+      alert('Failed to save goal. Please try again.');
+    }
+  };
   
   return (
     <>
@@ -406,6 +508,45 @@ const TemplateDashboard = ({
           );
         })}
       </Box>
+      
+      {/* Goal Setting Dialog */}
+      <Dialog
+        open={openGoalDialog}
+        onClose={handleCloseGoalDialog}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>
+          {currentGoal ? 'Edit Goal' : 'Set Goal'} for {selectedKpi?.name || ''}
+        </DialogTitle>
+        <DialogContent>
+          {selectedKpi && (
+            <GoalSettingForm
+              onSubmit={handleSubmitGoal}
+              initialData={currentGoal ? {
+                ...currentGoal,
+                kpi_id: selectedKpi.id
+              } : {
+                kpi_id: selectedKpi.id,
+                entity_type: 'department',
+                entity_id: 'sales',
+                time_period: 'yearly',
+                start_date: new Date(new Date().getFullYear(), 0, 1),
+                end_date: new Date(new Date().getFullYear(), 11, 31),
+                target_value: '',
+                stretch_target: '',
+                minimum_target: '',
+                status: 'active'
+              }}
+              kpiDefinitions={kpiDefinitions}
+              entities={entities}
+            />
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseGoalDialog}>Cancel</Button>
+        </DialogActions>
+      </Dialog>
     </>
   );
 };
@@ -451,8 +592,8 @@ const renderPrimaryMetric = (adapter, data) => {
 };
 
 // Helper function to render the appropriate chart component
-const renderChart = (chart, chartData, adapter) => {
-  if (!chartData) {
+const renderChart = (chart, data, adapter) => {
+  if (!data) {
     console.warn(`No data found for chart: ${chart.id} - ${chart.name}`);
     return (
       <Card elevation={2} sx={{ height: '100%', minHeight: 250 }}>
@@ -468,23 +609,41 @@ const renderChart = (chart, chartData, adapter) => {
     );
   }
   
-  switch(chart.type.toLowerCase()) {
-    case 'card':
-      return <MetricCard metric={chart} data={chartData} adapter={adapter} />;
-    case 'barchart':
-      return <BarChartCard metric={chart} data={chartData} adapter={adapter} />;
-    case 'linechart':
-      return <LineChartCard metric={chart} data={chartData} adapter={adapter} />;
-    case 'piechart':
-      return <PieChartCard metric={chart} data={chartData} adapter={adapter} />;
-    default:
-      console.warn(`Unknown chart type: ${chart.type} for chart: ${chart.name}`);
-      return <MetricCard metric={chart} data={chartData} adapter={adapter} />;
-  }
+  const chartType = chart.type.toLowerCase();
+  
+  // Add a Set Goal button to each chart
+  const chartComponent = (
+    <Box sx={{ position: 'relative' }}>
+      {chartType === 'card' && <MetricCard metric={chart} data={data} adapter={adapter} />}
+      {chartType === 'barchart' && <BarChartCard metric={chart} data={data} adapter={adapter} />}
+      {chartType === 'linechart' && <LineChartCard metric={chart} data={data} adapter={adapter} />}
+      {chartType === 'piechart' && <PieChartCard metric={chart} data={data} adapter={adapter} />}
+      
+      <Button
+        variant="outlined"
+        size="small"
+        startIcon={<EditIcon />}
+        onClick={() => handleOpenGoalDialog(chart.id)}
+        sx={{ position: 'absolute', top: 10, right: 10 }}
+      >
+        {data.target !== null ? 'Edit Goal' : 'Set Goal'}
+      </Button>
+    </Box>
+  );
+  
+  return chartComponent;
 };
 
 // Metric Card Component
 const MetricCard = ({ metric, data, adapter }) => {
+  // Format the progress value safely
+  const formatProgress = (progress, target) => {
+    if (progress === null || target === null) {
+      return 'No target set';
+    }
+    return `${progress.toFixed(0)}%`;
+  };
+
   return (
     <Card elevation={2} sx={{ height: '100%' }}>
       <CardContent>
@@ -495,19 +654,20 @@ const MetricCard = ({ metric, data, adapter }) => {
           {adapter.formatValue(metric.id, data.current)}
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-          Target: {adapter.formatValue(metric.id, data.target)}
+          Target: {data.target !== null ? adapter.formatValue(metric.id, data.target) : 'Not set'}
         </Typography>
-        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
           <Box sx={{ width: '100%', mr: 1 }}>
             <LinearProgress 
               variant="determinate" 
-              value={data.progress} 
+              value={data.progress !== null ? Math.min(data.progress, 100) : 0} 
               color={data.status === 'positive' ? 'success' : data.status === 'negative' ? 'error' : 'primary'}
-              sx={{ height: 8, borderRadius: 4 }}
             />
           </Box>
           <Box sx={{ minWidth: 35 }}>
-            <Typography variant="body2" color="text.secondary">{`${Math.round(data.progress)}%`}</Typography>
+            <Typography variant="body2" color="text.secondary">
+              {formatProgress(data.progress, data.target)}
+            </Typography>
           </Box>
         </Box>
       </CardContent>
@@ -527,7 +687,7 @@ const BarChartCard = ({ metric, data, adapter }) => {
           {adapter.formatValue(metric.id, data.current)}
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-          Target: {adapter.formatValue(metric.id, data.target)}
+          Target: {data.target !== null ? adapter.formatValue(metric.id, data.target) : 'Not set'}
         </Typography>
         <Box sx={{ height: 200, mt: 2 }}>
           <ResponsiveContainer width="100%" height="100%">
@@ -559,7 +719,7 @@ const LineChartCard = ({ metric, data, adapter }) => {
           {adapter.formatValue(metric.id, data.current)}
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-          Target: {adapter.formatValue(metric.id, data.target)}
+          Target: {data.target !== null ? adapter.formatValue(metric.id, data.target) : 'Not set'}
         </Typography>
         <Box sx={{ height: 200, mt: 2 }}>
           <ResponsiveContainer width="100%" height="100%">
@@ -600,7 +760,7 @@ const PieChartCard = ({ metric, data, adapter }) => {
           {adapter.formatValue(metric.id, data.current)}
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-          Target: {adapter.formatValue(metric.id, data.target)}
+          Target: {data.target !== null ? adapter.formatValue(metric.id, data.target) : 'Not set'}
         </Typography>
         <Box sx={{ height: 200, mt: 2 }}>
           <ResponsiveContainer width="100%" height="100%">
