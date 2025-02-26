@@ -151,58 +151,93 @@ const TemplateDashboard = ({
   
   // Process data based on selected time period
   const processData = (data) => {
+    if (!data) {
+      console.warn('No data provided to processData');
+      return {};
+    }
+    
     const processedData = {};
     
     Object.entries(data).forEach(([kpiId, kpiData]) => {
-      let filteredData;
-      
-      // Select the right data array based on time period
-      if (timePeriod === 'weekly') {
-        filteredData = kpiData.weeklyData || [];
-      } else if (timePeriod === 'monthly') {
-        filteredData = kpiData.monthlyData || [];
-      } else if (timePeriod === 'quarterly') {
-        filteredData = kpiData.quarterlyData || [];
-      } else if (timePeriod === 'yearly') {
-        filteredData = kpiData.yearlyData || [];
-      } else {
-        filteredData = kpiData.chartData || [];
+      if (!kpiData) {
+        console.warn(`No data for KPI: ${kpiId}`);
+        return;
       }
       
-      // Filter by specific period if selected
-      if (specificPeriod) {
-        if (timePeriod === 'yearly') {
-          filteredData = filteredData.filter(item => item.name === specificPeriod);
-        } else {
-          const periodIndex = parseInt(specificPeriod, 10) - 1;
-          filteredData = filteredData.filter((_, index) => index === periodIndex);
+      let filteredData = [];
+      
+      try {
+        // Select the right data array based on time period
+        if (timePeriod === 'weekly' && kpiData.weeklyData) {
+          filteredData = [...kpiData.weeklyData];
+        } else if (timePeriod === 'monthly' && kpiData.monthlyData) {
+          filteredData = [...kpiData.monthlyData];
+        } else if (timePeriod === 'quarterly' && kpiData.quarterlyData) {
+          filteredData = [...kpiData.quarterlyData];
+        } else if (timePeriod === 'yearly' && kpiData.yearlyData) {
+          filteredData = [...kpiData.yearlyData];
+        } else if (kpiData.chartData) {
+          filteredData = [...kpiData.chartData];
         }
-      }
-      
-      // Use the filtered data for the chart
-      processedData[kpiId] = {
-        ...kpiData,
-        chartData: filteredData
-      };
-      
-      // Update current value based on filtered data if available
-      if (filteredData.length > 0) {
-        processedData[kpiId].current = filteredData[0].value;
-        processedData[kpiId].target = filteredData[0].target;
         
-        // Recalculate progress
-        if (processedData[kpiId].target) {
-          processedData[kpiId].progress = Math.round((processedData[kpiId].current / processedData[kpiId].target) * 100);
-          
-          // Update status based on progress
-          if (processedData[kpiId].progress >= 100) {
-            processedData[kpiId].status = 'positive';
-          } else if (processedData[kpiId].progress >= 80) {
-            processedData[kpiId].status = 'neutral';
+        // Filter by specific period if selected
+        if (specificPeriod && filteredData.length > 0) {
+          if (timePeriod === 'yearly') {
+            filteredData = filteredData.filter(item => item && item.name === specificPeriod);
           } else {
-            processedData[kpiId].status = 'negative';
+            const periodIndex = parseInt(specificPeriod, 10) - 1;
+            if (periodIndex >= 0 && periodIndex < filteredData.length) {
+              filteredData = [filteredData[periodIndex]];
+            }
           }
         }
+        
+        // Create a safe copy of the KPI data
+        processedData[kpiId] = {
+          ...kpiData,
+          chartData: filteredData,
+          current: kpiData.current || 0,
+          target: kpiData.target || null,
+          progress: kpiData.progress || null,
+          status: kpiData.status || 'neutral'
+        };
+        
+        // Update current value based on filtered data if available
+        if (filteredData.length > 0 && filteredData[0]) {
+          if (filteredData[0].value !== undefined) {
+            processedData[kpiId].current = filteredData[0].value;
+          }
+          if (filteredData[0].target !== undefined) {
+            processedData[kpiId].target = filteredData[0].target;
+          }
+          
+          // Recalculate progress if we have both current and target
+          if (processedData[kpiId].current !== null && 
+              processedData[kpiId].target !== null && 
+              processedData[kpiId].target > 0) {
+            processedData[kpiId].progress = Math.round((processedData[kpiId].current / processedData[kpiId].target) * 100);
+            
+            // Update status based on progress
+            if (processedData[kpiId].progress >= 100) {
+              processedData[kpiId].status = 'positive';
+            } else if (processedData[kpiId].progress >= 80) {
+              processedData[kpiId].status = 'neutral';
+            } else {
+              processedData[kpiId].status = 'negative';
+            }
+          }
+        }
+      } catch (error) {
+        console.error(`Error processing data for KPI ${kpiId}:`, error);
+        // Provide fallback data
+        processedData[kpiId] = {
+          ...kpiData,
+          chartData: [],
+          current: kpiData.current || 0,
+          target: kpiData.target || null,
+          progress: null,
+          status: 'neutral'
+        };
       }
     });
     
@@ -284,7 +319,36 @@ const TemplateDashboard = ({
   
   // Render a chart based on its type
   const renderChart = (chart, data, adapter) => {
-    if (!data) return null;
+    if (!data) {
+      console.warn(`No data available for chart: ${chart.id}`);
+      return null;
+    }
+    
+    // Ensure chartData exists and has at least one item
+    if (!data.chartData || data.chartData.length === 0) {
+      console.warn(`No chart data available for chart: ${chart.id}`);
+      return (
+        <Card elevation={2} sx={{ height: '100%' }}>
+          <CardContent>
+            <Typography variant="h6" color="text.secondary" gutterBottom>
+              {chart.name}
+            </Typography>
+            <Typography variant="body1" color="text.secondary">
+              No data available for the selected time period.
+            </Typography>
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<EditIcon />}
+              onClick={() => handleOpenGoalDialog(chart.id)}
+              sx={{ mt: 2 }}
+            >
+              {data.target !== null ? 'Edit Goal' : 'Set Goal'}
+            </Button>
+          </CardContent>
+        </Card>
+      );
+    }
     
     const chartType = chart.type.toLowerCase();
     
@@ -566,11 +630,16 @@ const TemplateDashboard = ({
 // Card Component
 const CardComponent = ({ metric, data, adapter }) => {
   // Format the progress value safely
-  const formatProgress = (progress, target) => {
-    if (progress === null || target === null) {
+  const formatProgress = (progress) => {
+    if (progress === null || progress === undefined) {
       return 'No target set';
     }
-    return `${progress.toFixed(0)}%`;
+    try {
+      return `${Math.round(progress)}%`;
+    } catch (error) {
+      console.error('Error formatting progress:', error);
+      return 'N/A';
+    }
   };
 
   return (
@@ -595,7 +664,7 @@ const CardComponent = ({ metric, data, adapter }) => {
           </Box>
           <Box sx={{ minWidth: 35 }}>
             <Typography variant="body2" color="text.secondary">
-              {formatProgress(data.progress, data.target)}
+              {formatProgress(data.progress)}
             </Typography>
           </Box>
         </Box>
