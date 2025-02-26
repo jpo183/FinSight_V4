@@ -10,6 +10,9 @@ import SalesDashboard from './components/kpi/dashboards/SalesDashboard';
 import KpiManagementPage from './pages/Sales/KpiManagementPage';
 import { Box } from '@mui/material';
 import GoalManagement from './components/kpi/goals/GoalManagement';
+import { Link } from 'react-router-dom';
+import { ListItem, ListItemIcon, ListItemText } from '@mui/material';
+import { Dashboard as DashboardIcon, Settings as SettingsIcon, BarChart as BarChartIcon, Flag as TargetIcon } from '@mui/icons-material';
 
 const AppLayout = ({ children }) => (
   <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
@@ -55,7 +58,7 @@ function App() {
             <KpiManagementPage />
           </AppLayout>
         } />
-        <Route path="/goals" element={<GoalManagement />} />
+        <Route path="/kpi-management" element={<GoalManagement />} />
       </Routes>
     </Router>
   );
