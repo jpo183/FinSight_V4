@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   AppBar, Toolbar, Typography, Box, Paper, Grid, TableContainer,
   Table, TableHead, TableBody, TableRow, TableCell, Accordion,
@@ -37,27 +37,42 @@ const TemplateDashboard = ({
   console.log('TemplateDashboard rendering with adapter:', domainAdapter);
   console.log('TemplateDashboard data:', data);
 
-  // State for time range and period selection
-  const [timeRangeView, setTimeRangeView] = useState('annual');
-  const [selectedPeriod, setSelectedPeriod] = useState({ quarter: 'Q3', month: 'July' });
-  const [expanded, setExpanded] = useState(domainAdapter.getSections().map(s => s.id));
+  // Check if any of the data is test data
+  const isTestData = Object.values(data).some(item => item.isTestData);
 
-  // Handle time range change
-  const handleTimeRangeChange = (event, newValue) => {
-    if (newValue !== null) {
-      setTimeRangeView(newValue);
-    }
-  };
+  // Get sections from adapter
+  const sections = domainAdapter.getSections();
+  console.log('Sections to render:', sections);
 
-  // Handle period change
-  const handlePeriodChange = (event) => {
-    setSelectedPeriod({
-      ...selectedPeriod,
-      [event.target.name]: event.target.value
+  // State to track expanded sections (default all expanded)
+  const [expanded, setExpanded] = useState(sections.map(s => s.id));
+  
+  // State to track selected time period
+  const [timePeriod, setTimePeriod] = useState('monthly');
+  
+  // Process data based on selected time period
+  const processedData = React.useMemo(() => {
+    const result = {};
+    Object.entries(data).forEach(([kpiId, kpiData]) => {
+      if (!kpiData) return;
+      
+      // Create a copy of the data
+      result[kpiId] = { ...kpiData };
+      
+      // Update chart data based on selected time period
+      if (timePeriod === 'weekly' && kpiData.weeklyData) {
+        result[kpiId].chartData = kpiData.weeklyData;
+      } else if (timePeriod === 'monthly' && kpiData.monthlyData) {
+        result[kpiId].chartData = kpiData.monthlyData;
+      } else if (timePeriod === 'quarterly' && kpiData.quarterlyData) {
+        result[kpiId].chartData = kpiData.quarterlyData;
+      } else if (timePeriod === 'yearly' && kpiData.yearlyData) {
+        result[kpiId].chartData = kpiData.yearlyData;
+      }
     });
-  };
+    return result;
+  }, [data, timePeriod]);
 
-  // Handle accordion expansion
   const handleAccordionChange = (sectionId) => (event, isExpanded) => {
     setExpanded(prev => 
       isExpanded 
@@ -65,22 +80,12 @@ const TemplateDashboard = ({
         : prev.filter(id => id !== sectionId)
     );
   };
-
-  // Get filtered data based on time range
-  const filteredData = domainAdapter.filterDataByTimeRange(
-    data, 
-    timeRangeView, 
-    selectedPeriod
-  );
-
-  console.log('Sections to render:', domainAdapter.getSections());
-
-  // Check if any of the data is test data
-  const isTestData = Object.values(data).some(item => item.isTestData);
-
-  // Get sections from adapter
-  const sections = domainAdapter.getSections();
-  console.log('Sections to render:', sections);
+  
+  const handleTimePeriodChange = (event, newTimePeriod) => {
+    if (newTimePeriod !== null) {
+      setTimePeriod(newTimePeriod);
+    }
+  };
 
   return (
     <>
@@ -101,77 +106,31 @@ const TemplateDashboard = ({
           </Box>
         )}
         
-        {/* Time Range Toggle */}
+        {/* Time period selector */}
         <Paper sx={{ mb: 3, p: 2 }}>
           <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, alignItems: { md: 'center' }, gap: 2 }}>
-            <Typography variant="subtitle1" sx={{ minWidth: 120 }}>Time Range View:</Typography>
+            <Typography variant="subtitle1" sx={{ minWidth: 120 }}>Time Period:</Typography>
             
             <ToggleButtonGroup
-              value={timeRangeView}
+              value={timePeriod}
               exclusive
-              onChange={handleTimeRangeChange}
-              aria-label="time range view"
+              onChange={handleTimePeriodChange}
+              aria-label="time period"
               size="small"
             >
-              <ToggleButton value="annual" aria-label="annual view">
-                <CalendarViewMonthIcon sx={{ mr: 1 }} />
-                Annual
+              <ToggleButton value="weekly" aria-label="weekly">
+                Weekly
               </ToggleButton>
-              <ToggleButton value="quarterly" aria-label="quarterly view">
-                <DateRangeIcon sx={{ mr: 1 }} />
-                Quarterly
-              </ToggleButton>
-              <ToggleButton value="monthly" aria-label="monthly view">
-                <EventIcon sx={{ mr: 1 }} />
+              <ToggleButton value="monthly" aria-label="monthly">
                 Monthly
               </ToggleButton>
+              <ToggleButton value="quarterly" aria-label="quarterly">
+                Quarterly
+              </ToggleButton>
+              <ToggleButton value="yearly" aria-label="yearly">
+                Yearly
+              </ToggleButton>
             </ToggleButtonGroup>
-            
-            {timeRangeView === 'quarterly' && (
-              <FormControl size="small" sx={{ minWidth: 120 }}>
-                <InputLabel id="quarter-select-label">Quarter</InputLabel>
-                <Select
-                  labelId="quarter-select-label"
-                  id="quarter-select"
-                  name="quarter"
-                  value={selectedPeriod.quarter}
-                  label="Quarter"
-                  onChange={handlePeriodChange}
-                >
-                  <MenuItem value="Q1">Q1</MenuItem>
-                  <MenuItem value="Q2">Q2</MenuItem>
-                  <MenuItem value="Q3">Q3</MenuItem>
-                  <MenuItem value="Q4">Q4</MenuItem>
-                </Select>
-              </FormControl>
-            )}
-            
-            {timeRangeView === 'monthly' && (
-              <FormControl size="small" sx={{ minWidth: 120 }}>
-                <InputLabel id="month-select-label">Month</InputLabel>
-                <Select
-                  labelId="month-select-label"
-                  id="month-select"
-                  name="month"
-                  value={selectedPeriod.month}
-                  label="Month"
-                  onChange={handlePeriodChange}
-                >
-                  <MenuItem value="January">January</MenuItem>
-                  <MenuItem value="February">February</MenuItem>
-                  <MenuItem value="March">March</MenuItem>
-                  <MenuItem value="April">April</MenuItem>
-                  <MenuItem value="May">May</MenuItem>
-                  <MenuItem value="June">June</MenuItem>
-                  <MenuItem value="July">July</MenuItem>
-                  <MenuItem value="August">August</MenuItem>
-                  <MenuItem value="September">September</MenuItem>
-                  <MenuItem value="October">October</MenuItem>
-                  <MenuItem value="November">November</MenuItem>
-                  <MenuItem value="December">December</MenuItem>
-                </Select>
-              </FormControl>
-            )}
           </Box>
         </Paper>
         
@@ -186,7 +145,7 @@ const TemplateDashboard = ({
           }}
         >
           <Typography variant="h5" gutterBottom sx={{ fontWeight: 'bold', color: '#1976d2' }}>
-            {domainAdapter.getPrimaryMetricName(timeRangeView, selectedPeriod)}
+            {domainAdapter.getPrimaryMetricName(timePeriod, processedData[domainAdapter.getPrimaryMetric().id])}
           </Typography>
           
           <Grid container spacing={3}>
@@ -194,7 +153,7 @@ const TemplateDashboard = ({
               <Box>
                 <Typography variant="subtitle1" color="textSecondary">Current</Typography>
                 <Typography variant="h3" sx={{ fontWeight: 'bold', color: '#1976d2' }}>
-                  {domainAdapter.formatPrimaryMetric(filteredData.primaryMetric.current)}
+                  {domainAdapter.formatPrimaryMetric(processedData[domainAdapter.getPrimaryMetric().id].current)}
                 </Typography>
               </Box>
             </Grid>
@@ -203,7 +162,7 @@ const TemplateDashboard = ({
               <Box>
                 <Typography variant="subtitle1" color="textSecondary">Target</Typography>
                 <Typography variant="h3">
-                  {domainAdapter.formatPrimaryMetric(filteredData.primaryMetric.target)}
+                  {domainAdapter.formatPrimaryMetric(processedData[domainAdapter.getPrimaryMetric().id].target)}
                 </Typography>
               </Box>
             </Grid>
@@ -215,32 +174,26 @@ const TemplateDashboard = ({
                   <Box sx={{ width: '100%', mr: 1 }}>
                     <LinearProgress 
                       variant="determinate" 
-                      value={Math.min(filteredData.primaryMetric.progress, 100)} 
-                      color={filteredData.primaryMetric.relativeProgress >= 1 ? "success" : "primary"}
+                      value={Math.min(processedData[domainAdapter.getPrimaryMetric().id].progress, 100)} 
+                      color={processedData[domainAdapter.getPrimaryMetric().id].relativeProgress >= 1 ? "success" : "primary"}
                       sx={{ height: 10, borderRadius: 5 }}
                     />
                   </Box>
                   <Box sx={{ minWidth: 35 }}>
                     <Typography variant="body2" color="textSecondary">
-                      {`${filteredData.primaryMetric.progress.toFixed(1)}%`}
+                      {`${processedData[domainAdapter.getPrimaryMetric().id].progress.toFixed(1)}%`}
                     </Typography>
                   </Box>
                 </Box>
                 
-                {timeRangeView === 'annual' && (
-                  <Typography variant="body2" color="textSecondary" gutterBottom>
-                    Time Elapsed: {filteredData.primaryMetric.yearProgress.toFixed(1)}%
-                  </Typography>
-                )}
-                
                 <Typography 
                   variant="body1" 
-                  color={filteredData.primaryMetric.relativeProgress >= 1 ? "success.main" : "error.main"}
+                  color={processedData[domainAdapter.getPrimaryMetric().id].relativeProgress >= 1 ? "success.main" : "error.main"}
                   fontWeight="bold"
                 >
-                  {filteredData.primaryMetric.relativeProgress >= 1 
-                    ? `${((filteredData.primaryMetric.relativeProgress - 1) * 100).toFixed(1)}% ahead of target` 
-                    : `${((1 - filteredData.primaryMetric.relativeProgress) * 100).toFixed(1)}% behind target`}
+                  {processedData[domainAdapter.getPrimaryMetric().id].relativeProgress >= 1 
+                    ? `${((processedData[domainAdapter.getPrimaryMetric().id].relativeProgress - 1) * 100).toFixed(1)}% ahead of target` 
+                    : `${((1 - processedData[domainAdapter.getPrimaryMetric().id].relativeProgress) * 100).toFixed(1)}% behind target`}
                 </Typography>
               </Box>
             </Grid>
@@ -260,7 +213,7 @@ const TemplateDashboard = ({
               </TableRow>
             </TableHead>
             <TableBody>
-              {domainAdapter.getTableRows(filteredData).map((row, index) => (
+              {domainAdapter.getTableRows(processedData).map((row, index) => (
                 <TableRow key={index}>
                   {domainAdapter.tableHeaders.map(header => (
                     <TableCell key={`${index}-${header.id}`} align={header.align || 'left'}>
@@ -313,7 +266,7 @@ const TemplateDashboard = ({
                 <Grid container spacing={3}>
                   {sectionCharts.map(chart => (
                     <Grid item xs={12} md={6} lg={4} key={chart.id}>
-                      {renderChart(chart, data[chart.id], domainAdapter)}
+                      {renderChart(chart, processedData[chart.id], domainAdapter)}
                     </Grid>
                   ))}
                 </Grid>

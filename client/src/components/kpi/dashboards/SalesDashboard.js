@@ -65,16 +65,60 @@ const SalesDashboard = () => {
           const baseValue = 100000 + (index * 10000); // Increases by 10k for each KPI
           const baseTarget = baseValue * 1.2; // Always 20% higher than value
           
+          // Generate weekly data (last 12 weeks)
+          const weeklyData = Array(12).fill().map((_, i) => {
+            // Weekly values with some variation
+            const weekFactor = 0.8 + (Math.sin(i / 6 * Math.PI) * 0.3); // Creates a wave pattern
+            return {
+              name: `Week ${i+1}`,
+              value: Math.floor((baseValue / 52) * weekFactor * 4), // 4 weeks worth of value
+              target: Math.floor((baseTarget / 52) * weekFactor * 4) // 4 weeks worth of target
+            };
+          });
+          
+          // Generate monthly data (12 months)
+          const monthlyData = Array(12).fill().map((_, i) => {
+            // Monthly values with seasonal variation
+            const monthFactor = 0.7 + (Math.sin((i / 11) * Math.PI) * 0.4); // Creates a seasonal pattern
+            return {
+              name: `Month ${i+1}`,
+              value: Math.floor((baseValue / 12) * monthFactor),
+              target: Math.floor((baseTarget / 12) * monthFactor)
+            };
+          });
+          
+          // Generate quarterly data (4 quarters)
+          const quarterlyData = Array(4).fill().map((_, i) => {
+            // Quarterly values with some variation
+            const quarterFactor = 0.9 + (Math.sin(i / 2 * Math.PI) * 0.2); // Creates a wave pattern
+            return {
+              name: `Q${i+1}`,
+              value: Math.floor((baseValue / 4) * quarterFactor),
+              target: Math.floor((baseTarget / 4) * quarterFactor)
+            };
+          });
+          
+          // Generate yearly data (3 years)
+          const yearlyData = Array(3).fill().map((_, i) => {
+            // Yearly values with growth trend
+            const yearFactor = 0.8 + (i * 0.1); // Each year grows by 10%
+            return {
+              name: `${new Date().getFullYear() - 2 + i}`,
+              value: Math.floor(baseValue * yearFactor),
+              target: Math.floor(baseTarget * yearFactor)
+            };
+          });
+          
           mockData[kpiId] = {
             current: baseValue,
             target: baseTarget,
             progress: 80, // Fixed at 80% for all KPIs
             status: 'neutral',
-            chartData: Array(12).fill().map((_, i) => ({
-              name: `Month ${i+1}`,
-              value: Math.floor(baseValue / 12),
-              target: Math.floor(baseTarget / 12)
-            })),
+            chartData: monthlyData, // Default to monthly data
+            weeklyData: weeklyData,
+            monthlyData: monthlyData,
+            quarterlyData: quarterlyData,
+            yearlyData: yearlyData,
             // Add a flag to indicate this is test data
             isTestData: true
           };
