@@ -148,7 +148,9 @@ const renderChart = (type, data, dataKeys) => {
   }
 };
 
-// Create a dynamic domain adapter based on KPI configurations
+// Dynamic Adapter Factory
+// This creates a domain-specific adapter based on KPI configurations
+
 const createDynamicAdapter = (domain, kpiConfigs) => {
   console.log('Creating dynamic adapter for domain:', domain);
   console.log('KPI configs received:', kpiConfigs);
@@ -172,7 +174,7 @@ const createDynamicAdapter = (domain, kpiConfigs) => {
   console.log('KPIs grouped by section:', kpisBySection);
   
   // Find primary metric
-  const primaryMetric = dashboardKpis.find(kpi => kpi.isPrimaryMetric) || dashboardKpis[0];
+  const primaryMetric = dashboardKpis.find(kpi => kpi.isPrimaryMetric === true) || dashboardKpis[0];
   console.log('Primary metric:', primaryMetric);
   
   // Create chart configurations
@@ -185,6 +187,7 @@ const createDynamicAdapter = (domain, kpiConfigs) => {
       dataKeys: ['current', 'target'] // Default data keys
     }));
   
+  // Create and return the adapter object with required methods
   return {
     // Basic adapter properties
     dashboardTitle: `${domain} Dashboard`,
@@ -328,7 +331,7 @@ const createDynamicAdapter = (domain, kpiConfigs) => {
     getSections: () => {
       return Object.keys(kpisBySection).map(sectionId => ({
         id: sectionId,
-        name: getSectionTitle(sectionId),
+        name: formatSectionName(sectionId),
         kpis: kpisBySection[sectionId]
       }));
     },
