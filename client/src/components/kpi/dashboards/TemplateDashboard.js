@@ -19,6 +19,9 @@ const TemplateDashboard = ({
   domainAdapter,  // Contains domain-specific logic and data
   data            // The actual data for the dashboard
 }) => {
+  console.log('TemplateDashboard rendering with adapter:', domainAdapter);
+  console.log('TemplateDashboard data:', data);
+
   // State for time range and period selection
   const [timeRangeView, setTimeRangeView] = useState('annual');
   const [selectedPeriod, setSelectedPeriod] = useState({ quarter: 'Q3', month: 'July' });
@@ -59,6 +62,8 @@ const TemplateDashboard = ({
     timeRangeView, 
     selectedPeriod
   );
+
+  console.log('Sections to render:', domainAdapter.getSections());
 
   return (
     <>

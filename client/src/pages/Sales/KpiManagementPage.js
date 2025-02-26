@@ -223,7 +223,7 @@ const KpiManagementPage = () => {
               </Typography>
               <GoalSettingForm 
                 onSubmit={handleSubmitGoal}
-                kpiDefinitions={kpiDefinitions}
+                kpiDefinitions={kpiList}
                 entities={entities}
               />
             </Box>

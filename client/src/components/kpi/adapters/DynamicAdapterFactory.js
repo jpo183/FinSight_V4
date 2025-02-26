@@ -150,19 +150,30 @@ const renderChart = (type, data, dataKeys) => {
 
 // Create a dynamic domain adapter based on KPI configurations
 const createDynamicAdapter = (domain, kpiConfigs) => {
-  // Find the primary metric
-  const primaryMetric = kpiConfigs.find(kpi => kpi.isPrimaryMetric);
+  console.log('Creating dynamic adapter for domain:', domain);
+  console.log('KPI configs received:', kpiConfigs);
+  
+  // Filter KPIs by domain and those that should be shown on dashboard
+  const dashboardKpis = kpiConfigs.filter(kpi => 
+    kpi.domain === domain && kpi.dashboardSection !== 'none'
+  );
+  
+  console.log('KPIs filtered for dashboard:', dashboardKpis);
   
   // Group KPIs by section
-  const kpisBySection = kpiConfigs.reduce((acc, kpi) => {
-    if (kpi.dashboardSection && kpi.dashboardSection !== 'none') {
-      if (!acc[kpi.dashboardSection]) {
-        acc[kpi.dashboardSection] = [];
-      }
-      acc[kpi.dashboardSection].push(kpi);
+  const kpisBySection = {};
+  dashboardKpis.forEach(kpi => {
+    if (!kpisBySection[kpi.dashboardSection]) {
+      kpisBySection[kpi.dashboardSection] = [];
     }
-    return acc;
-  }, {});
+    kpisBySection[kpi.dashboardSection].push(kpi);
+  });
+  
+  console.log('KPIs grouped by section:', kpisBySection);
+  
+  // Find primary metric
+  const primaryMetric = dashboardKpis.find(kpi => kpi.isPrimaryMetric) || dashboardKpis[0];
+  console.log('Primary metric:', primaryMetric);
   
   // Create chart configurations
   const chartConfigs = kpiConfigs

@@ -12,7 +12,8 @@ import {
   Grid,
   InputAdornment,
   Snackbar,
-  Alert
+  Alert,
+  FormHelperText
 } from '@mui/material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
@@ -49,8 +50,7 @@ const GoalSettingForm = ({ onSubmit, initialData = null, kpiDefinitions = [], en
     }
   }, [initialData]);
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
+  const handleChange = (name, value) => {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
@@ -115,20 +115,19 @@ const GoalSettingForm = ({ onSubmit, initialData = null, kpiDefinitions = [], en
         <Box component="form" onSubmit={handleSubmit} noValidate>
           <Grid container spacing={3}>
             <Grid item xs={12} md={6}>
-              <FormControl fullWidth required>
+              <FormControl fullWidth margin="normal" required>
                 <InputLabel>KPI</InputLabel>
                 <Select
-                  name="kpi_id"
-                  value={formData.kpi_id}
-                  onChange={handleChange}
-                  label="KPI"
+                  value={formData.kpi_id || ''}
+                  onChange={(e) => handleChange('kpi_id', e.target.value)}
                 >
-                  {kpiDefinitions.map(kpi => (
-                    <MenuItem key={kpi.kpi_id} value={kpi.kpi_id}>
+                  {kpiDefinitions.map((kpi) => (
+                    <MenuItem key={kpi.id} value={kpi.id}>
                       {kpi.name}
                     </MenuItem>
                   ))}
                 </Select>
+                <FormHelperText>Select the KPI for this goal</FormHelperText>
               </FormControl>
             </Grid>
             
@@ -138,7 +137,7 @@ const GoalSettingForm = ({ onSubmit, initialData = null, kpiDefinitions = [], en
                 <Select
                   name="entity_type"
                   value={formData.entity_type}
-                  onChange={handleChange}
+                  onChange={(e) => handleChange('entity_type', e.target.value)}
                   label="Entity Type"
                 >
                   <MenuItem value="organization">Organization</MenuItem>
@@ -155,7 +154,7 @@ const GoalSettingForm = ({ onSubmit, initialData = null, kpiDefinitions = [], en
                 <Select
                   name="entity_id"
                   value={formData.entity_id}
-                  onChange={handleChange}
+                  onChange={(e) => handleChange('entity_id', e.target.value)}
                   label="Entity"
                 >
                   {entities
@@ -175,7 +174,7 @@ const GoalSettingForm = ({ onSubmit, initialData = null, kpiDefinitions = [], en
                 <Select
                   name="time_period"
                   value={formData.time_period}
-                  onChange={handleChange}
+                  onChange={(e) => handleChange('time_period', e.target.value)}
                   label="Time Period"
                 >
                   <MenuItem value="monthly">Monthly</MenuItem>
@@ -210,7 +209,7 @@ const GoalSettingForm = ({ onSubmit, initialData = null, kpiDefinitions = [], en
                 label="Target Value"
                 name="target_value"
                 value={formData.target_value}
-                onChange={handleChange}
+                onChange={(e) => handleChange('target_value', e.target.value)}
                 type="number"
                 InputProps={{
                   startAdornment: showCurrency ? (
@@ -229,7 +228,7 @@ const GoalSettingForm = ({ onSubmit, initialData = null, kpiDefinitions = [], en
                 label="Stretch Target"
                 name="stretch_target"
                 value={formData.stretch_target}
-                onChange={handleChange}
+                onChange={(e) => handleChange('stretch_target', e.target.value)}
                 type="number"
                 InputProps={{
                   startAdornment: showCurrency ? (
@@ -248,7 +247,7 @@ const GoalSettingForm = ({ onSubmit, initialData = null, kpiDefinitions = [], en
                 label="Minimum Target"
                 name="minimum_target"
                 value={formData.minimum_target}
-                onChange={handleChange}
+                onChange={(e) => handleChange('minimum_target', e.target.value)}
                 type="number"
                 InputProps={{
                   startAdornment: showCurrency ? (
@@ -267,7 +266,7 @@ const GoalSettingForm = ({ onSubmit, initialData = null, kpiDefinitions = [], en
                 <Select
                   name="status"
                   value={formData.status}
-                  onChange={handleChange}
+                  onChange={(e) => handleChange('status', e.target.value)}
                   label="Status"
                 >
                   <MenuItem value="draft">Draft</MenuItem>

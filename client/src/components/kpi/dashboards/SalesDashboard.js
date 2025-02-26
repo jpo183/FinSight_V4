@@ -103,6 +103,16 @@ const SalesDashboard = () => {
     );
   }
   
+  if (adapter) {
+    console.log('Adapter sections:', adapter.getSections());
+    console.log('Adapter primary metric:', adapter.getPrimaryMetric());
+    
+    // Log each section's charts
+    adapter.getSections().forEach(section => {
+      console.log(`Section ${section.id} charts:`, adapter.getChartsForSection(section.id));
+    });
+  }
+  
   return (
     <TemplateDashboard 
       domainAdapter={adapter} 
