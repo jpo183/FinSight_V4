@@ -27,7 +27,11 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  TextField
+  TextField,
+  ToggleButtonGroup,
+  ToggleButton,
+  Tabs,
+  Tab
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -50,9 +54,9 @@ import TrendingDownIcon from '@mui/icons-material/TrendingDown';
 import TrendingFlatIcon from '@mui/icons-material/TrendingFlat';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import FilterListIcon from '@mui/icons-material/FilterList';
-import { DatePicker } from '@mui/x-date-pickers/DatePicker';
-import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
-import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import CalendarViewMonthIcon from '@mui/icons-material/CalendarViewMonth';
+import DateRangeIcon from '@mui/icons-material/DateRange';
+import EventIcon from '@mui/icons-material/Event';
 
 // Import our services
 import salesDataService from '../../../services/salesDataService';
@@ -83,6 +87,13 @@ const SalesDashboard = () => {
     relativeProgress: 0
   });
   
+  // Time range state
+  const [timeRangeView, setTimeRangeView] = useState('annual');
+  const [selectedPeriod, setSelectedPeriod] = useState({
+    quarter: 'Q3', // Default to current quarter
+    month: 'July'  // Default to current month
+  });
+  
   // Mock KPI data for the summary table
   const [kpiSummary, setKpiSummary] = useState([
     { 
@@ -93,7 +104,26 @@ const SalesDashboard = () => {
       goal: 2500000, 
       unit: 'currency',
       trend: 'up',
-      trendData: [5, 10, 5, 20, 8, 15, 25]
+      trendData: [5, 10, 5, 20, 8, 15, 25],
+      // Add period-specific data
+      periods: {
+        annual: { value: 0, goal: 2500000 },
+        quarterly: {
+          'Q1': { value: 450000, goal: 500000 },
+          'Q2': { value: 680000, goal: 650000 },
+          'Q3': { value: 520000, goal: 700000 },
+          'Q4': { value: 0, goal: 650000 }
+        },
+        monthly: {
+          'January': { value: 120000, goal: 150000, weeks: [28000, 32000, 30000, 30000] },
+          'February': { value: 145000, goal: 160000, weeks: [35000, 38000, 36000, 36000] },
+          'March': { value: 185000, goal: 190000, weeks: [45000, 48000, 46000, 46000] },
+          'April': { value: 210000, goal: 200000, weeks: [50000, 55000, 52000, 53000] },
+          'May': { value: 230000, goal: 220000, weeks: [55000, 58000, 57000, 60000] },
+          'June': { value: 240000, goal: 230000, weeks: [58000, 62000, 60000, 60000] },
+          'July': { value: 180000, goal: 220000, weeks: [42000, 45000, 46000, 47000] }
+        }
+      }
     },
     { 
       id: 2, 
@@ -103,7 +133,25 @@ const SalesDashboard = () => {
       goal: 600000, 
       unit: 'currency',
       trend: 'up',
-      trendData: [10, 15, 13, 20, 22, 25, 30]
+      trendData: [10, 15, 13, 20, 22, 25, 30],
+      periods: {
+        annual: { value: 450000, goal: 600000 },
+        quarterly: {
+          'Q1': { value: 120000, goal: 140000 },
+          'Q2': { value: 180000, goal: 160000 },
+          'Q3': { value: 150000, goal: 170000 },
+          'Q4': { value: 0, goal: 130000 }
+        },
+        monthly: {
+          'January': { value: 35000, goal: 40000, weeks: [8000, 9000, 9000, 9000] },
+          'February': { value: 40000, goal: 45000, weeks: [9500, 10000, 10500, 10000] },
+          'March': { value: 45000, goal: 55000, weeks: [11000, 11500, 11000, 11500] },
+          'April': { value: 55000, goal: 50000, weeks: [13000, 14000, 14000, 14000] },
+          'May': { value: 60000, goal: 55000, weeks: [14500, 15000, 15500, 15000] },
+          'June': { value: 65000, goal: 55000, weeks: [16000, 16500, 16000, 16500] },
+          'July': { value: 50000, goal: 55000, weeks: [12000, 12500, 12500, 13000] }
+        }
+      }
     },
     { 
       id: 3, 
@@ -136,7 +184,7 @@ const SalesDashboard = () => {
       trendData: [60, 65, 70, 75, 80, 82, 85]
     }
   ]);
-
+  
   // Mock goal for now - this would come from your KPI system later
   const salesGoal = {
     year: 2025,
@@ -155,7 +203,6 @@ const SalesDashboard = () => {
 
   // Add state for filters
   const [filters, setFilters] = useState({
-    timeRange: 'ytd',
     region: 'all',
     product: 'all'
   });
@@ -170,6 +217,21 @@ const SalesDashboard = () => {
   const handleFilterChange = (event) => {
     setFilters({
       ...filters,
+      [event.target.name]: event.target.value
+    });
+  };
+  
+  // Handle time range view change
+  const handleTimeRangeChange = (event, newValue) => {
+    if (newValue !== null) {
+      setTimeRangeView(newValue);
+    }
+  };
+  
+  // Handle period selection change
+  const handlePeriodChange = (event) => {
+    setSelectedPeriod({
+      ...selectedPeriod,
       [event.target.name]: event.target.value
     });
   };
@@ -189,44 +251,38 @@ const SalesDashboard = () => {
           const salesKpi = updatedSummary.find(kpi => kpi.id === 1);
           if (salesKpi) {
             salesKpi.value = data.ytdTotal;
+            salesKpi.periods.annual.value = data.ytdTotal;
           }
           return updatedSummary;
         });
         
-        // Calculate progress percentage
-        const targetValue = salesGoal.targetValue;
-        const currentValue = data.ytdTotal;
-        
-        // Calculate what percentage of the year has elapsed
+        // Calculate progress percentages
         const now = new Date();
         const startOfYear = new Date(now.getFullYear(), 0, 1);
         const endOfYear = new Date(now.getFullYear(), 11, 31);
-        const yearProgress = (now - startOfYear) / (endOfYear - startOfYear);
         
-        // Calculate what percentage of the goal has been achieved
-        const achievedPercentage = (currentValue / targetValue) * 100;
-        
-        // Calculate progress relative to time elapsed
-        const relativeProgress = achievedPercentage / (yearProgress * 100);
+        const yearProgress = ((now - startOfYear) / (endOfYear - startOfYear)) * 100;
+        const achieved = (data.ytdTotal / salesGoal.targetValue) * 100;
+        const relativeProgress = achieved / yearProgress;
         
         setProgress({
-          achieved: achievedPercentage,
-          yearProgress: yearProgress * 100,
-          relativeProgress: relativeProgress
+          achieved,
+          yearProgress,
+          relativeProgress
         });
         
         setLoading(false);
       } catch (err) {
-        console.error('Error fetching dashboard data:', err);
-        setError(err.message);
+        setError('Failed to load sales data. Please try again later.');
         setLoading(false);
+        console.error('Error fetching sales data:', err);
       }
     };
     
     fetchData();
   }, []);
-
-  // Format value based on unit type
+  
+  // Helper function to format values based on unit
   const formatValue = (value, unit) => {
     switch (unit) {
       case 'currency':
@@ -254,44 +310,154 @@ const SalesDashboard = () => {
   const calculatePercentage = (value, goal) => {
     return (value / goal) * 100;
   };
-
-  // Mock data for additional sections
-  const pipelineData = {
-    opportunities: 45,
-    opportunitiesGoal: 60,
-    conversionRate: 28,
-    conversionGoal: 35,
-    avgDealSize: 55000,
-    avgDealSizeGoal: 60000,
-    stages: [
-      { name: 'Prospecting', value: 15 },
-      { name: 'Qualification', value: 10 },
-      { name: 'Proposal', value: 8 },
-      { name: 'Negotiation', value: 7 },
-      { name: 'Closed Won', value: 5 }
-    ]
+  
+  // Get current KPI data based on selected time range and period
+  const getCurrentKpiData = (kpi) => {
+    switch (timeRangeView) {
+      case 'annual':
+        return {
+          value: kpi.periods.annual.value,
+          goal: kpi.periods.annual.goal
+        };
+      case 'quarterly':
+        return {
+          value: kpi.periods.quarterly[selectedPeriod.quarter].value,
+          goal: kpi.periods.quarterly[selectedPeriod.quarter].goal
+        };
+      case 'monthly':
+        return {
+          value: kpi.periods.monthly[selectedPeriod.month].value,
+          goal: kpi.periods.monthly[selectedPeriod.month].goal,
+          weeks: kpi.periods.monthly[selectedPeriod.month].weeks
+        };
+      default:
+        return { value: kpi.value, goal: kpi.goal };
+    }
   };
-
-  const customerData = {
-    newLogos: 12,
-    newLogosGoal: 20,
-    retention: 92,
-    retentionGoal: 95,
-    nps: 68,
-    npsGoal: 75
+  
+  // Generate table rows based on time range view
+  const getTableRows = () => {
+    if (timeRangeView === 'monthly') {
+      // For monthly view, show weekly breakdown
+      const weeks = ['Week 1', 'Week 2', 'Week 3', 'Week 4'];
+      return (
+        <>
+          {kpiSummary.map((kpi) => {
+            const kpiData = getCurrentKpiData(kpi);
+            const monthlyPercentOfGoal = calculatePercentage(kpiData.value, kpiData.goal);
+            const isMonthlyAhead = monthlyPercentOfGoal >= 25 * weeks.length; // Assuming equal distribution
+            
+            return (
+              <React.Fragment key={kpi.id}>
+                <TableRow 
+                  sx={{ 
+                    backgroundColor: isMonthlyAhead ? 'rgba(76, 175, 80, 0.1)' : 'rgba(244, 67, 54, 0.1)',
+                    '& > td': { fontWeight: 'bold' }
+                  }}
+                >
+                  <TableCell component="th" scope="row">
+                    {kpi.name}
+                  </TableCell>
+                  <TableCell>{kpi.category}</TableCell>
+                  <TableCell align="right">{formatValue(kpiData.value, kpi.unit)}</TableCell>
+                  <TableCell align="right">{formatValue(kpiData.goal, kpi.unit)}</TableCell>
+                  <TableCell align="right">
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+                      <LinearProgress 
+                        variant="determinate" 
+                        value={Math.min(monthlyPercentOfGoal, 100)} 
+                        sx={{ width: 60, mr: 1, height: 8, borderRadius: 5 }}
+                        color={isMonthlyAhead ? "success" : "error"}
+                      />
+                      {formatPercentage(monthlyPercentOfGoal)}
+                    </Box>
+                  </TableCell>
+                  <TableCell align="center">
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      {getTrendIcon(kpi.trend)}
+                    </Box>
+                  </TableCell>
+                </TableRow>
+                
+                {/* Weekly breakdown rows */}
+                {kpiData.weeks && kpiData.weeks.map((weekValue, index) => {
+                  const weeklyGoal = kpiData.goal / 4; // Simple division for demo
+                  const weeklyPercentOfGoal = calculatePercentage(weekValue, weeklyGoal);
+                  const isWeeklyAhead = weeklyPercentOfGoal >= 100;
+                  
+                  return (
+                    <TableRow 
+                      key={`${kpi.id}-week-${index}`}
+                      sx={{ 
+                        backgroundColor: 'rgba(0, 0, 0, 0.02)'
+                      }}
+                    >
+                      <TableCell sx={{ pl: 4 }}>{weeks[index]}</TableCell>
+                      <TableCell></TableCell>
+                      <TableCell align="right">{formatValue(weekValue, kpi.unit)}</TableCell>
+                      <TableCell align="right">{formatValue(weeklyGoal, kpi.unit)}</TableCell>
+                      <TableCell align="right">
+                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+                          <LinearProgress 
+                            variant="determinate" 
+                            value={Math.min(weeklyPercentOfGoal, 100)} 
+                            sx={{ width: 60, mr: 1, height: 6, borderRadius: 5 }}
+                            color={isWeeklyAhead ? "success" : "error"}
+                          />
+                          {formatPercentage(weeklyPercentOfGoal)}
+                        </Box>
+                      </TableCell>
+                      <TableCell align="center"></TableCell>
+                    </TableRow>
+                  );
+                })}
+              </React.Fragment>
+            );
+          })}
+        </>
+      );
+    } else {
+      // For annual and quarterly views, show regular rows
+      return kpiSummary.map((kpi) => {
+        const kpiData = getCurrentKpiData(kpi);
+        const percentOfGoal = calculatePercentage(kpiData.value, kpiData.goal);
+        const isAhead = percentOfGoal >= (timeRangeView === 'annual' ? progress.yearProgress : 100 * (1/3)); // For quarterly, assume 1/3 through quarter
+        
+        return (
+          <TableRow 
+            key={kpi.id}
+            sx={{ 
+              '&:last-child td, &:last-child th': { border: 0 },
+              backgroundColor: isAhead ? 'rgba(76, 175, 80, 0.1)' : 'rgba(244, 67, 54, 0.1)'
+            }}
+          >
+            <TableCell component="th" scope="row">
+              {kpi.name}
+            </TableCell>
+            <TableCell>{kpi.category}</TableCell>
+            <TableCell align="right">{formatValue(kpiData.value, kpi.unit)}</TableCell>
+            <TableCell align="right">{formatValue(kpiData.goal, kpi.unit)}</TableCell>
+            <TableCell align="right">
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+                <LinearProgress 
+                  variant="determinate" 
+                  value={Math.min(percentOfGoal, 100)} 
+                  sx={{ width: 60, mr: 1, height: 8, borderRadius: 5 }}
+                  color={isAhead ? "success" : "error"}
+                />
+                {formatPercentage(percentOfGoal)}
+              </Box>
+            </TableCell>
+            <TableCell align="center">
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {getTrendIcon(kpi.trend)}
+              </Box>
+            </TableCell>
+          </TableRow>
+        );
+      });
+    }
   };
-
-  const activityData = {
-    meetings: 85,
-    meetingsGoal: 100,
-    calls: 320,
-    callsGoal: 400,
-    emails: 1250,
-    emailsGoal: 1500
-  };
-
-  // Colors for pie chart
-  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
 
   if (loading) {
     return (
@@ -338,6 +504,44 @@ const SalesDashboard = () => {
     );
   }
 
+  // Mock data for additional sections
+  const pipelineData = {
+    opportunities: 45,
+    opportunitiesGoal: 60,
+    conversionRate: 28,
+    conversionGoal: 35,
+    avgDealSize: 55000,
+    avgDealSizeGoal: 60000,
+    stages: [
+      { name: 'Prospecting', value: 15 },
+      { name: 'Qualification', value: 10 },
+      { name: 'Proposal', value: 8 },
+      { name: 'Negotiation', value: 7 },
+      { name: 'Closed Won', value: 5 }
+    ]
+  };
+
+  const customerData = {
+    newLogos: 12,
+    newLogosGoal: 20,
+    retention: 92,
+    retentionGoal: 95,
+    nps: 68,
+    npsGoal: 75
+  };
+
+  const activityData = {
+    meetings: 85,
+    meetingsGoal: 100,
+    calls: 320,
+    callsGoal: 400,
+    emails: 1250,
+    emailsGoal: 1500
+  };
+
+  // Colors for pie chart
+  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
+
   return (
     <>
       <AppBar position="static">
@@ -374,27 +578,7 @@ const SalesDashboard = () => {
         {showFilters && (
           <Paper sx={{ p: 2, mb: 3 }}>
             <Grid container spacing={2} alignItems="center">
-              <Grid item xs={12} sm={4}>
-                <FormControl fullWidth size="small">
-                  <InputLabel id="time-range-label">Time Range</InputLabel>
-                  <Select
-                    labelId="time-range-label"
-                    id="time-range"
-                    name="timeRange"
-                    value={filters.timeRange}
-                    label="Time Range"
-                    onChange={handleFilterChange}
-                  >
-                    <MenuItem value="ytd">Year to Date</MenuItem>
-                    <MenuItem value="q1">Q1</MenuItem>
-                    <MenuItem value="q2">Q2</MenuItem>
-                    <MenuItem value="q3">Q3</MenuItem>
-                    <MenuItem value="q4">Q4</MenuItem>
-                    <MenuItem value="custom">Custom</MenuItem>
-                  </Select>
-                </FormControl>
-              </Grid>
-              <Grid item xs={12} sm={4}>
+              <Grid item xs={12} sm={6}>
                 <FormControl fullWidth size="small">
                   <InputLabel id="region-label">Region</InputLabel>
                   <Select
@@ -413,7 +597,7 @@ const SalesDashboard = () => {
                   </Select>
                 </FormControl>
               </Grid>
-              <Grid item xs={12} sm={4}>
+              <Grid item xs={12} sm={6}>
                 <FormControl fullWidth size="small">
                   <InputLabel id="product-label">Product</InputLabel>
                   <Select
@@ -425,15 +609,89 @@ const SalesDashboard = () => {
                     onChange={handleFilterChange}
                   >
                     <MenuItem value="all">All Products</MenuItem>
-                    <MenuItem value="productA">Product A</MenuItem>
-                    <MenuItem value="productB">Product B</MenuItem>
-                    <MenuItem value="productC">Product C</MenuItem>
+                    <MenuItem value="product1">Product A</MenuItem>
+                    <MenuItem value="product2">Product B</MenuItem>
+                    <MenuItem value="product3">Product C</MenuItem>
                   </Select>
                 </FormControl>
               </Grid>
             </Grid>
           </Paper>
         )}
+        
+        {/* Time Range Toggle */}
+        <Paper sx={{ mb: 3, p: 2 }}>
+          <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, alignItems: { md: 'center' }, gap: 2 }}>
+            <Typography variant="subtitle1" sx={{ minWidth: 120 }}>Time Range View:</Typography>
+            
+            <ToggleButtonGroup
+              value={timeRangeView}
+              exclusive
+              onChange={handleTimeRangeChange}
+              aria-label="time range view"
+              size="small"
+            >
+              <ToggleButton value="annual" aria-label="annual view">
+                <CalendarViewMonthIcon sx={{ mr: 1 }} />
+                Annual
+              </ToggleButton>
+              <ToggleButton value="quarterly" aria-label="quarterly view">
+                <DateRangeIcon sx={{ mr: 1 }} />
+                Quarterly
+              </ToggleButton>
+              <ToggleButton value="monthly" aria-label="monthly view">
+                <EventIcon sx={{ mr: 1 }} />
+                Monthly
+              </ToggleButton>
+            </ToggleButtonGroup>
+            
+            {timeRangeView === 'quarterly' && (
+              <FormControl size="small" sx={{ minWidth: 120 }}>
+                <InputLabel id="quarter-select-label">Quarter</InputLabel>
+                <Select
+                  labelId="quarter-select-label"
+                  id="quarter-select"
+                  name="quarter"
+                  value={selectedPeriod.quarter}
+                  label="Quarter"
+                  onChange={handlePeriodChange}
+                >
+                  <MenuItem value="Q1">Q1</MenuItem>
+                  <MenuItem value="Q2">Q2</MenuItem>
+                  <MenuItem value="Q3">Q3</MenuItem>
+                  <MenuItem value="Q4">Q4</MenuItem>
+                </Select>
+              </FormControl>
+            )}
+            
+            {timeRangeView === 'monthly' && (
+              <FormControl size="small" sx={{ minWidth: 120 }}>
+                <InputLabel id="month-select-label">Month</InputLabel>
+                <Select
+                  labelId="month-select-label"
+                  id="month-select"
+                  name="month"
+                  value={selectedPeriod.month}
+                  label="Month"
+                  onChange={handlePeriodChange}
+                >
+                  <MenuItem value="January">January</MenuItem>
+                  <MenuItem value="February">February</MenuItem>
+                  <MenuItem value="March">March</MenuItem>
+                  <MenuItem value="April">April</MenuItem>
+                  <MenuItem value="May">May</MenuItem>
+                  <MenuItem value="June">June</MenuItem>
+                  <MenuItem value="July">July</MenuItem>
+                  <MenuItem value="August">August</MenuItem>
+                  <MenuItem value="September">September</MenuItem>
+                  <MenuItem value="October">October</MenuItem>
+                  <MenuItem value="November">November</MenuItem>
+                  <MenuItem value="December">December</MenuItem>
+                </Select>
+              </FormControl>
+            )}
+          </Box>
+        </Paper>
         
         {/* KPI Summary Table */}
         <TableContainer component={Paper} sx={{ mb: 4 }}>
@@ -449,43 +707,7 @@ const SalesDashboard = () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {kpiSummary.map((kpi) => {
-                const percentOfGoal = calculatePercentage(kpi.value, kpi.goal);
-                const isAhead = percentOfGoal >= progress.yearProgress;
-                
-                return (
-                  <TableRow 
-                    key={kpi.id}
-                    sx={{ 
-                      '&:last-child td, &:last-child th': { border: 0 },
-                      backgroundColor: isAhead ? 'rgba(76, 175, 80, 0.1)' : 'rgba(244, 67, 54, 0.1)'
-                    }}
-                  >
-                    <TableCell component="th" scope="row">
-                      {kpi.name}
-                    </TableCell>
-                    <TableCell>{kpi.category}</TableCell>
-                    <TableCell align="right">{formatValue(kpi.value, kpi.unit)}</TableCell>
-                    <TableCell align="right">{formatValue(kpi.goal, kpi.unit)}</TableCell>
-                    <TableCell align="right">
-                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
-                        <LinearProgress 
-                          variant="determinate" 
-                          value={Math.min(percentOfGoal, 100)} 
-                          sx={{ width: 60, mr: 1, height: 8, borderRadius: 5 }}
-                          color={isAhead ? "success" : "error"}
-                        />
-                        {formatPercentage(percentOfGoal)}
-                      </Box>
-                    </TableCell>
-                    <TableCell align="center">
-                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        {getTrendIcon(kpi.trend)}
-                      </Box>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
+              {getTableRows()}
             </TableBody>
           </Table>
         </TableContainer>
