@@ -9,7 +9,8 @@ import {
   Card,
   CardContent,
   Divider,
-  Button
+  Button,
+  Breadcrumbs
 } from '@mui/material';
 import { 
   BarChart, 
@@ -24,6 +25,7 @@ import {
   Line
 } from 'recharts';
 import { Link } from 'react-router-dom';
+import HomeIcon from '@mui/icons-material/Home';
 
 // Import our services
 import salesDataService from '../../../services/salesDataService';
@@ -120,6 +122,40 @@ const SalesDashboard = () => {
 
   return (
     <Box sx={{ mt: 4 }}>
+      {/* Add breadcrumb navigation */}
+      <Breadcrumbs aria-label="breadcrumb" sx={{ mb: 3 }}>
+        <Link 
+          to="/" 
+          style={{ 
+            display: 'flex', 
+            alignItems: 'center',
+            color: 'inherit',
+            textDecoration: 'none'
+          }}
+        >
+          <HomeIcon sx={{ mr: 0.5 }} fontSize="inherit" />
+          Home
+        </Link>
+        <Typography
+          sx={{ display: 'flex', alignItems: 'center' }}
+          color="text.primary"
+        >
+          Sales Dashboard
+        </Typography>
+      </Breadcrumbs>
+      
+      {/* Add a back to main button */}
+      <Box sx={{ display: 'flex', mb: 3 }}>
+        <Button 
+          component={Link} 
+          to="/"
+          variant="outlined"
+          startIcon={<HomeIcon />}
+        >
+          Main Menu
+        </Button>
+      </Box>
+      
       <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
         <Typography variant="h5">Sales Performance Dashboard</Typography>
         <Button 
