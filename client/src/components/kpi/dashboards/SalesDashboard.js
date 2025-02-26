@@ -28,8 +28,8 @@ import kpiService from '../../../services/kpi/kpiService';
 
 // This would be replaced with your actual sales data service
 import salesService from '../../components/kpi/services/salesService';
-import TemplateDashboard from '../../components/kpi/dashboards/TemplateDashboard';
-import createDynamicAdapter from '../../components/kpi/adapters/DynamicAdapterFactory';
+import TemplateDashboard from './TemplateDashboard';
+import createDynamicAdapter from '../adapters/DynamicAdapterFactory';
 import { fetchKPIs } from '../services/kpiService';
 import { fetchSalesData } from '../services/salesService';
 
@@ -51,10 +51,23 @@ const SalesDashboard = () => {
         const kpiConfigs = storedKpis ? JSON.parse(storedKpis) : [];
         console.log('Parsed KPI Configs:', kpiConfigs);
         
-        // Fetch sales data using the salesService
-        console.log('Fetching sales data...');
-        const salesData = await salesService.fetchSalesData();
-        console.log('Sales Data:', salesData);
+        // Generate mock data for each KPI
+        const mockData = {};
+        kpiConfigs.forEach(kpi => {
+          mockData[kpi.id] = {
+            current: Math.floor(Math.random() * 1000),
+            target: Math.floor(Math.random() * 1500),
+            progress: Math.floor(Math.random() * 100),
+            status: Math.random() > 0.5 ? 'positive' : 'neutral',
+            chartData: Array(12).fill().map((_, i) => ({
+              name: `Month ${i+1}`,
+              value: Math.floor(Math.random() * 1000),
+              target: Math.floor(Math.random() * 1500)
+            }))
+          };
+        });
+        
+        console.log('Generated mock data:', mockData);
         
         // Create dynamic adapter
         console.log('Creating dynamic adapter...');
@@ -62,7 +75,7 @@ const SalesDashboard = () => {
         console.log('Dynamic Adapter:', dynamicAdapter);
         
         setAdapter(dynamicAdapter);
-        setData(salesData);
+        setData(mockData);
         console.log('Dashboard state updated');
       } catch (error) {
         console.error('Error initializing dashboard:', error);
@@ -74,6 +87,16 @@ const SalesDashboard = () => {
     
     initDashboard();
   }, []);
+  
+  if (adapter) {
+    console.log('Adapter sections:', adapter.getSections());
+    console.log('Adapter primary metric:', adapter.getPrimaryMetric());
+    
+    // Log each section's charts
+    adapter.getSections().forEach(section => {
+      console.log(`Section ${section.id} charts:`, adapter.getChartsForSection(section.id));
+    });
+  }
   
   if (loading) {
     return (
@@ -101,16 +124,6 @@ const SalesDashboard = () => {
         </Typography>
       </Box>
     );
-  }
-  
-  if (adapter) {
-    console.log('Adapter sections:', adapter.getSections());
-    console.log('Adapter primary metric:', adapter.getPrimaryMetric());
-    
-    // Log each section's charts
-    adapter.getSections().forEach(section => {
-      console.log(`Section ${section.id} charts:`, adapter.getChartsForSection(section.id));
-    });
   }
   
   return (
