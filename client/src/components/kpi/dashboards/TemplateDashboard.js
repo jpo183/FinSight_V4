@@ -14,6 +14,21 @@ import MenuItem from '@mui/material/MenuItem';
 import CalendarViewMonthIcon from '@mui/icons-material/CalendarViewMonth';
 import DateRangeIcon from '@mui/icons-material/DateRange';
 import EventIcon from '@mui/icons-material/Event';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  PieChart,
+  Pie,
+  Cell
+} from 'recharts';
 
 const TemplateDashboard = ({ 
   domainAdapter,  // Contains domain-specific logic and data
@@ -67,6 +82,10 @@ const TemplateDashboard = ({
 
   // Check if any of the data is test data
   const isTestData = Object.values(data).some(item => item.isTestData);
+
+  // Get sections from adapter
+  const sections = domainAdapter.getSections();
+  console.log('Sections to render:', sections);
 
   return (
     <>
@@ -260,21 +279,29 @@ const TemplateDashboard = ({
         </TableContainer>
         
         {/* Domain-specific sections rendered dynamically */}
-        {domainAdapter.sections.map(section => (
-          <Accordion 
-            key={section.id}
-            expanded={expanded[section.id] || false}
-            onChange={handleAccordionChange(section.id)}
-            sx={{ mb: 2 }}
-          >
-            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-              <Typography variant="h6">{section.title}</Typography>
-            </AccordionSummary>
-            <AccordionDetails>
-              {section.getContent(filteredData, timeRangeView, selectedPeriod)}
-            </AccordionDetails>
-          </Accordion>
-        ))}
+        {sections.map(section => {
+          const sectionCharts = domainAdapter.getChartsForSection(section.id);
+          
+          // Skip rendering if no charts in this section
+          if (!sectionCharts || sectionCharts.length === 0) return null;
+          
+          return (
+            <Box key={section.id} sx={{ mb: 4 }}>
+              <Typography variant="h5" sx={{ mb: 2, mt: 3, fontWeight: 'bold' }}>
+                {section.name}
+              </Typography>
+              
+              {/* Render charts for this section */}
+              <Grid container spacing={3}>
+                {sectionCharts.map(chart => (
+                  <Grid item xs={12} md={6} lg={4} key={chart.id}>
+                    {renderChart(chart, data[chart.id], domainAdapter)}
+                  </Grid>
+                ))}
+              </Grid>
+            </Box>
+          );
+        })}
         
         {/* Charts Section */}
         <Accordion
@@ -303,6 +330,223 @@ const TemplateDashboard = ({
         </Accordion>
       </Box>
     </>
+  );
+};
+
+// Render the primary metric
+const renderPrimaryMetric = (adapter, data) => {
+  const primaryMetric = adapter.getPrimaryMetric();
+  if (!primaryMetric) return null;
+  
+  const metricData = data[primaryMetric.id];
+  if (!metricData) return null;
+  
+  return (
+    <Box sx={{ mb: 4 }}>
+      <Card elevation={3}>
+        <CardContent>
+          <Typography variant="h6" color="text.secondary" gutterBottom>
+            {primaryMetric.name}
+          </Typography>
+          <Typography variant="h3" component="div" sx={{ mb: 1 }}>
+            {adapter.formatValue(primaryMetric.id, metricData.current)}
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+            Target: {adapter.formatValue(primaryMetric.id, metricData.target)}
+          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <Box sx={{ width: '100%', mr: 1 }}>
+              <LinearProgress 
+                variant="determinate" 
+                value={metricData.progress} 
+                color={metricData.status === 'positive' ? 'success' : metricData.status === 'negative' ? 'error' : 'primary'}
+                sx={{ height: 10, borderRadius: 5 }}
+              />
+            </Box>
+            <Box sx={{ minWidth: 35 }}>
+              <Typography variant="body2" color="text.secondary">{`${Math.round(metricData.progress)}%`}</Typography>
+            </Box>
+          </Box>
+        </CardContent>
+      </Card>
+    </Box>
+  );
+};
+
+// Helper function to render the appropriate chart component
+const renderChart = (chart, chartData, adapter) => {
+  if (!chartData) {
+    console.warn(`No data found for chart: ${chart.id} - ${chart.name}`);
+    return (
+      <Card elevation={2} sx={{ height: '100%', minHeight: 250 }}>
+        <CardContent>
+          <Typography variant="h6" color="text.secondary" gutterBottom>
+            {chart.name}
+          </Typography>
+          <Typography variant="body2" color="error">
+            No data available
+          </Typography>
+        </CardContent>
+      </Card>
+    );
+  }
+  
+  switch(chart.type.toLowerCase()) {
+    case 'card':
+      return <MetricCard metric={chart} data={chartData} adapter={adapter} />;
+    case 'barchart':
+      return <BarChartCard metric={chart} data={chartData} adapter={adapter} />;
+    case 'linechart':
+      return <LineChartCard metric={chart} data={chartData} adapter={adapter} />;
+    case 'piechart':
+      return <PieChartCard metric={chart} data={chartData} adapter={adapter} />;
+    default:
+      console.warn(`Unknown chart type: ${chart.type} for chart: ${chart.name}`);
+      return <MetricCard metric={chart} data={chartData} adapter={adapter} />;
+  }
+};
+
+// Metric Card Component
+const MetricCard = ({ metric, data, adapter }) => {
+  return (
+    <Card elevation={2} sx={{ height: '100%' }}>
+      <CardContent>
+        <Typography variant="h6" color="text.secondary" gutterBottom>
+          {metric.name}
+        </Typography>
+        <Typography variant="h4" component="div" sx={{ mb: 1 }}>
+          {adapter.formatValue(metric.id, data.current)}
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+          Target: {adapter.formatValue(metric.id, data.target)}
+        </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+          <Box sx={{ width: '100%', mr: 1 }}>
+            <LinearProgress 
+              variant="determinate" 
+              value={data.progress} 
+              color={data.status === 'positive' ? 'success' : data.status === 'negative' ? 'error' : 'primary'}
+              sx={{ height: 8, borderRadius: 4 }}
+            />
+          </Box>
+          <Box sx={{ minWidth: 35 }}>
+            <Typography variant="body2" color="text.secondary">{`${Math.round(data.progress)}%`}</Typography>
+          </Box>
+        </Box>
+      </CardContent>
+    </Card>
+  );
+};
+
+// Bar Chart Card Component
+const BarChartCard = ({ metric, data, adapter }) => {
+  return (
+    <Card elevation={2} sx={{ height: '100%' }}>
+      <CardContent>
+        <Typography variant="h6" color="text.secondary" gutterBottom>
+          {metric.name}
+        </Typography>
+        <Typography variant="h4" component="div" sx={{ mb: 1 }}>
+          {adapter.formatValue(metric.id, data.current)}
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+          Target: {adapter.formatValue(metric.id, data.target)}
+        </Typography>
+        <Box sx={{ height: 200, mt: 2 }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={data.chartData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="name" />
+              <YAxis />
+              <Tooltip formatter={(value) => adapter.formatValue(metric.id, value)} />
+              <Legend />
+              <Bar dataKey="value" fill="#8884d8" name="Actual" />
+              <Bar dataKey="target" fill="#82ca9d" name="Target" />
+            </BarChart>
+          </ResponsiveContainer>
+        </Box>
+      </CardContent>
+    </Card>
+  );
+};
+
+// Line Chart Card Component
+const LineChartCard = ({ metric, data, adapter }) => {
+  return (
+    <Card elevation={2} sx={{ height: '100%' }}>
+      <CardContent>
+        <Typography variant="h6" color="text.secondary" gutterBottom>
+          {metric.name}
+        </Typography>
+        <Typography variant="h4" component="div" sx={{ mb: 1 }}>
+          {adapter.formatValue(metric.id, data.current)}
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+          Target: {adapter.formatValue(metric.id, data.target)}
+        </Typography>
+        <Box sx={{ height: 200, mt: 2 }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={data.chartData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="name" />
+              <YAxis />
+              <Tooltip formatter={(value) => adapter.formatValue(metric.id, value)} />
+              <Legend />
+              <Line type="monotone" dataKey="value" stroke="#8884d8" name="Actual" />
+              <Line type="monotone" dataKey="target" stroke="#82ca9d" name="Target" />
+            </LineChart>
+          </ResponsiveContainer>
+        </Box>
+      </CardContent>
+    </Card>
+  );
+};
+
+// Pie Chart Card Component
+const PieChartCard = ({ metric, data, adapter }) => {
+  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
+  
+  // Create pie data from chart data
+  const pieData = data.chartData.map((item, index) => ({
+    name: item.name,
+    value: item.value,
+    color: COLORS[index % COLORS.length]
+  }));
+  
+  return (
+    <Card elevation={2} sx={{ height: '100%' }}>
+      <CardContent>
+        <Typography variant="h6" color="text.secondary" gutterBottom>
+          {metric.name}
+        </Typography>
+        <Typography variant="h4" component="div" sx={{ mb: 1 }}>
+          {adapter.formatValue(metric.id, data.current)}
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+          Target: {adapter.formatValue(metric.id, data.target)}
+        </Typography>
+        <Box sx={{ height: 200, mt: 2 }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie
+                data={pieData}
+                cx="50%"
+                cy="50%"
+                outerRadius={80}
+                fill="#8884d8"
+                dataKey="value"
+                label={({name, percent}) => `${name}: ${(percent * 100).toFixed(0)}%`}
+              >
+                {pieData.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={entry.color} />
+                ))}
+              </Pie>
+              <Tooltip formatter={(value) => adapter.formatValue(metric.id, value)} />
+            </PieChart>
+          </ResponsiveContainer>
+        </Box>
+      </CardContent>
+    </Card>
   );
 };
 
