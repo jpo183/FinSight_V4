@@ -322,8 +322,71 @@ const createDynamicAdapter = (domain, kpiConfigs) => {
           chart.dataKeys
         );
       }
-    }))
+    })),
+    
+    // Get all dashboard sections
+    getSections: () => {
+      return Object.keys(kpisBySection).map(sectionId => ({
+        id: sectionId,
+        name: getSectionTitle(sectionId),
+        kpis: kpisBySection[sectionId]
+      }));
+    },
+    
+    // Get primary metric for the dashboard
+    getPrimaryMetric: () => {
+      return primaryMetric ? {
+        id: primaryMetric.id,
+        name: primaryMetric.name,
+        description: primaryMetric.description,
+        dataType: primaryMetric.data_type,
+        unit: primaryMetric.unit
+      } : null;
+    },
+    
+    // Get charts for a specific section
+    getChartsForSection: (sectionId) => {
+      const sectionKpis = kpisBySection[sectionId] || [];
+      return sectionKpis.map(kpi => ({
+        id: kpi.id,
+        name: kpi.name,
+        description: kpi.description,
+        type: kpi.visualizationType,
+        dataType: kpi.data_type,
+        unit: kpi.unit
+      }));
+    },
+    
+    // Format value based on KPI data type
+    formatValue: (kpiId, value) => {
+      const kpi = dashboardKpis.find(k => k.id === kpiId);
+      if (!kpi) return value;
+      
+      switch(kpi.data_type) {
+        case 'currency':
+          return new Intl.NumberFormat('en-US', {
+            style: 'currency',
+            currency: kpi.unit || 'USD',
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 0
+          }).format(value);
+        case 'percentage':
+          return `${value}%`;
+        default:
+          return value;
+      }
+    }
   };
+};
+
+// Helper function to format section names
+const formatSectionName = (sectionId) => {
+  // Convert camelCase or snake_case to Title Case
+  return sectionId
+    .replace(/([A-Z])/g, ' $1') // Insert space before capital letters
+    .replace(/_/g, ' ') // Replace underscores with spaces
+    .replace(/^\w/, c => c.toUpperCase()) // Capitalize first letter
+    .trim();
 };
 
 export default createDynamicAdapter; 
