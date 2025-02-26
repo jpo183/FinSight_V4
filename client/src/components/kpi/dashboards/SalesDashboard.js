@@ -57,23 +57,30 @@ const SalesDashboard = () => {
         const kpiConfigs = storedKpis ? JSON.parse(storedKpis) : [];
         console.log('Parsed KPI Configs:', kpiConfigs);
         
-        // Generate mock data for each KPI
+        // Generate predictable test data for each KPI
         const mockData = {};
-        kpiConfigs.forEach(kpi => {
-          mockData[kpi.id] = {
-            current: Math.floor(Math.random() * 1000),
-            target: Math.floor(Math.random() * 1500),
-            progress: Math.floor(Math.random() * 100),
-            status: Math.random() > 0.5 ? 'positive' : 'neutral',
+        kpiConfigs.forEach((kpi, index) => {
+          // Use the KPI ID to generate predictable values
+          const kpiId = kpi.id;
+          const baseValue = 100000 + (index * 10000); // Increases by 10k for each KPI
+          const baseTarget = baseValue * 1.2; // Always 20% higher than value
+          
+          mockData[kpiId] = {
+            current: baseValue,
+            target: baseTarget,
+            progress: 80, // Fixed at 80% for all KPIs
+            status: 'neutral',
             chartData: Array(12).fill().map((_, i) => ({
               name: `Month ${i+1}`,
-              value: Math.floor(Math.random() * 1000),
-              target: Math.floor(Math.random() * 1500)
-            }))
+              value: Math.floor(baseValue / 12),
+              target: Math.floor(baseTarget / 12)
+            })),
+            // Add a flag to indicate this is test data
+            isTestData: true
           };
         });
         
-        console.log('Generated mock data:', mockData);
+        console.log('Generated test data:', mockData);
         
         // Create dynamic adapter
         console.log('Creating dynamic adapter...');

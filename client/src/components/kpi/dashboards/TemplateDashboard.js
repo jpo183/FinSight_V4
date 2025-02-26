@@ -65,9 +65,28 @@ const TemplateDashboard = ({
 
   console.log('Sections to render:', domainAdapter.getSections());
 
+  // Check if any of the data is test data
+  const isTestData = Object.values(data).some(item => item.isTestData);
+
   return (
     <>
       <Box sx={{ flexGrow: 1, p: 3 }}>
+        {isTestData && (
+          <Box 
+            sx={{ 
+              bgcolor: 'warning.light', 
+              color: 'warning.contrastText', 
+              p: 2, 
+              mb: 2,
+              borderRadius: 1
+            }}
+          >
+            <Typography variant="body1">
+              <strong>Test Mode:</strong> This dashboard is displaying test data. Real data will be shown when connected to your data source.
+            </Typography>
+          </Box>
+        )}
+        
         {/* Time Range Toggle */}
         <Paper sx={{ mb: 3, p: 2 }}>
           <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, alignItems: { md: 'center' }, gap: 2 }}>
