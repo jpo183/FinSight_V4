@@ -16,9 +16,18 @@ import {
   TextField,
   Grid,
   FormHelperText,
-  Divider
+  Divider,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  IconButton
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
 
 // Import our KPI management components
 import GoalSettingForm from '../../components/kpi/goals/GoalSettingForm';
@@ -56,6 +65,29 @@ const KpiManagementPage = () => {
     { id: 2, name: 'South Region', type: 'team' }
   ];
 
+  const [kpiList, setKpiList] = useState([]);
+  const [editingKpiId, setEditingKpiId] = useState(null);
+
+  useEffect(() => {
+    const fetchKpis = async () => {
+      try {
+        // In a real implementation, this would call your API
+        // For now, we'll use localStorage as a simple storage solution
+        const storedKpis = localStorage.getItem('salesKpis');
+        console.log('Fetched KPIs from localStorage:', storedKpis);
+        if (storedKpis) {
+          const parsedKpis = JSON.parse(storedKpis);
+          console.log('Parsed KPIs:', parsedKpis);
+          setKpiList(parsedKpis);
+        }
+      } catch (error) {
+        console.error('Error fetching KPIs:', error);
+      }
+    };
+    
+    fetchKpis();
+  }, []);
+
   const handleTabChange = (event, newValue) => {
     setTabValue(newValue);
   };
@@ -83,27 +115,70 @@ const KpiManagementPage = () => {
   const handleSubmitKpi = async (event) => {
     event.preventDefault();
     try {
-      // In a real implementation, this would call the API
-      console.log('Submitting KPI definition:', kpi);
-      // Mock implementation for testing
-      setTimeout(() => {
-        alert('KPI definition saved successfully!');
-        // Reset form
-        setKpi({
-          name: '',
-          domain: 'Sales',
-          description: '',
-          data_type: 'currency',
-          unit: 'USD',
-          dashboardSection: 'none',
-          visualizationType: 'card',
-          showInTable: true,
-          isPrimaryMetric: false
-        });
-      }, 500);
+      console.log('Submitting KPI:', kpi);
+      
+      // Generate a unique ID if this is a new KPI
+      const kpiToSave = editingKpiId 
+        ? { ...kpi, id: editingKpiId }
+        : { ...kpi, id: Date.now().toString() };
+      
+      console.log('KPI to save:', kpiToSave);
+      
+      // Update the KPI list
+      let updatedKpis;
+      if (editingKpiId) {
+        // Update existing KPI
+        updatedKpis = kpiList.map(k => k.id === editingKpiId ? kpiToSave : k);
+      } else {
+        // Add new KPI
+        updatedKpis = [...kpiList, kpiToSave];
+      }
+      
+      console.log('Updated KPI list:', updatedKpis);
+      
+      // Save to localStorage
+      localStorage.setItem('salesKpis', JSON.stringify(updatedKpis));
+      console.log('Saved to localStorage');
+      
+      setKpiList(updatedKpis);
+      
+      // Reset form and editing state
+      setKpi({
+        name: '',
+        domain: 'Sales',
+        description: '',
+        data_type: 'currency',
+        unit: 'USD',
+        dashboardSection: 'none',
+        visualizationType: 'card',
+        showInTable: true,
+        isPrimaryMetric: false
+      });
+      setEditingKpiId(null);
+      
+      alert('KPI definition saved successfully!');
     } catch (error) {
       console.error('Error saving KPI definition:', error);
       alert('Error saving KPI definition. Please try again.');
+    }
+  };
+
+  // Add function to handle editing a KPI
+  const handleEditKpi = (kpiId) => {
+    const kpiToEdit = kpiList.find(k => k.id === kpiId);
+    if (kpiToEdit) {
+      setKpi(kpiToEdit);
+      setEditingKpiId(kpiId);
+      setTabValue(1); // Switch to the Define KPIs tab
+    }
+  };
+
+  // Add function to handle deleting a KPI
+  const handleDeleteKpi = (kpiId) => {
+    if (window.confirm('Are you sure you want to delete this KPI?')) {
+      const updatedKpis = kpiList.filter(k => k.id !== kpiId);
+      localStorage.setItem('salesKpis', JSON.stringify(updatedKpis));
+      setKpiList(updatedKpis);
     }
   };
 
@@ -136,6 +211,7 @@ const KpiManagementPage = () => {
             >
               <Tab label="Set Goals" />
               <Tab label="Define KPIs" />
+              <Tab label="Manage KPIs" />
               <Tab label="View History" />
             </Tabs>
           </Paper>
@@ -309,6 +385,52 @@ const KpiManagementPage = () => {
           )}
           
           {tabValue === 2 && (
+            <Box>
+              <Typography variant="h6" gutterBottom>
+                Manage Existing KPIs
+              </Typography>
+              
+              {kpiList.length === 0 ? (
+                <Typography>No KPIs defined yet. Create one in the "Define KPIs" tab.</Typography>
+              ) : (
+                <TableContainer component={Paper}>
+                  <Table>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Name</TableCell>
+                        <TableCell>Domain</TableCell>
+                        <TableCell>Data Type</TableCell>
+                        <TableCell>Dashboard Section</TableCell>
+                        <TableCell>Visualization</TableCell>
+                        <TableCell>Actions</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {kpiList.map((kpi) => (
+                        <TableRow key={kpi.id}>
+                          <TableCell>{kpi.name}</TableCell>
+                          <TableCell>{kpi.domain}</TableCell>
+                          <TableCell>{kpi.data_type}</TableCell>
+                          <TableCell>{kpi.dashboardSection}</TableCell>
+                          <TableCell>{kpi.visualizationType}</TableCell>
+                          <TableCell>
+                            <IconButton onClick={() => handleEditKpi(kpi.id)}>
+                              <EditIcon />
+                            </IconButton>
+                            <IconButton onClick={() => handleDeleteKpi(kpi.id)}>
+                              <DeleteIcon />
+                            </IconButton>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              )}
+            </Box>
+          )}
+          
+          {tabValue === 3 && (
             <Box>
               <Typography variant="h6" gutterBottom>
                 KPI History and Performance

@@ -42,17 +42,28 @@ const SalesDashboard = () => {
   useEffect(() => {
     const initDashboard = async () => {
       try {
-        // Fetch KPI configurations for Sales domain
-        const kpiConfigs = await kpiService.getDomainKpis('Sales');
+        console.log('Initializing Sales Dashboard');
+        
+        // Fetch KPI configurations from localStorage
+        const storedKpis = localStorage.getItem('salesKpis');
+        console.log('Raw KPIs from localStorage:', storedKpis);
+        
+        const kpiConfigs = storedKpis ? JSON.parse(storedKpis) : [];
+        console.log('Parsed KPI Configs:', kpiConfigs);
         
         // Fetch sales data using the salesService
+        console.log('Fetching sales data...');
         const salesData = await salesService.fetchSalesData();
+        console.log('Sales Data:', salesData);
         
         // Create dynamic adapter
+        console.log('Creating dynamic adapter...');
         const dynamicAdapter = createDynamicAdapter('Sales', kpiConfigs);
+        console.log('Dynamic Adapter:', dynamicAdapter);
         
         setAdapter(dynamicAdapter);
         setData(salesData);
+        console.log('Dashboard state updated');
       } catch (error) {
         console.error('Error initializing dashboard:', error);
         setError('Failed to load dashboard data. Please try again later.');
