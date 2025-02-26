@@ -47,8 +47,48 @@ const TemplateDashboard = ({
   // State to track expanded sections (default all expanded)
   const [expanded, setExpanded] = useState(sections.map(s => s.id));
   
-  // State to track selected time period
-  const [timePeriod, setTimePeriod] = useState('monthly');
+  // Time period state
+  const [timeRange, setTimeRange] = useState('monthly');
+  const [timeValue, setTimeValue] = useState(1); // Default to first period
+  
+  // Get time period options based on selected range
+  const getTimePeriodOptions = () => {
+    switch(timeRange) {
+      case 'weekly':
+        return Array(12).fill().map((_, i) => ({ value: i+1, label: `Week ${i+1}` }));
+      case 'monthly':
+        return [
+          { value: 1, label: 'January' },
+          { value: 2, label: 'February' },
+          { value: 3, label: 'March' },
+          { value: 4, label: 'April' },
+          { value: 5, label: 'May' },
+          { value: 6, label: 'June' },
+          { value: 7, label: 'July' },
+          { value: 8, label: 'August' },
+          { value: 9, label: 'September' },
+          { value: 10, label: 'October' },
+          { value: 11, label: 'November' },
+          { value: 12, label: 'December' }
+        ];
+      case 'quarterly':
+        return [
+          { value: 1, label: 'Q1' },
+          { value: 2, label: 'Q2' },
+          { value: 3, label: 'Q3' },
+          { value: 4, label: 'Q4' }
+        ];
+      case 'yearly':
+        const currentYear = new Date().getFullYear();
+        return [
+          { value: currentYear-2, label: `${currentYear-2}` },
+          { value: currentYear-1, label: `${currentYear-1}` },
+          { value: currentYear, label: `${currentYear}` }
+        ];
+      default:
+        return [];
+    }
+  };
   
   // Process data based on selected time period
   const processedData = React.useMemo(() => {
@@ -59,20 +99,64 @@ const TemplateDashboard = ({
       // Create a copy of the data
       result[kpiId] = { ...kpiData };
       
-      // Update chart data based on selected time period
-      if (timePeriod === 'weekly' && kpiData.weeklyData) {
+      // Update chart data based on selected time range
+      if (timeRange === 'weekly' && kpiData.weeklyData) {
         result[kpiId].chartData = kpiData.weeklyData;
-      } else if (timePeriod === 'monthly' && kpiData.monthlyData) {
+        // Filter to specific week if needed
+        if (timeValue) {
+          const weekData = kpiData.weeklyData.find(d => d.name === `Week ${timeValue}`);
+          if (weekData) {
+            result[kpiId].current = weekData.value;
+            result[kpiId].target = weekData.target;
+            result[kpiId].progress = Math.round((weekData.value / weekData.target) * 100);
+          }
+        }
+      } else if (timeRange === 'monthly' && kpiData.monthlyData) {
         result[kpiId].chartData = kpiData.monthlyData;
-      } else if (timePeriod === 'quarterly' && kpiData.quarterlyData) {
+        // Filter to specific month if needed
+        if (timeValue) {
+          const monthData = kpiData.monthlyData.find(d => d.name === `Month ${timeValue}`);
+          if (monthData) {
+            result[kpiId].current = monthData.value;
+            result[kpiId].target = monthData.target;
+            result[kpiId].progress = Math.round((monthData.value / monthData.target) * 100);
+          }
+        }
+      } else if (timeRange === 'quarterly' && kpiData.quarterlyData) {
         result[kpiId].chartData = kpiData.quarterlyData;
-      } else if (timePeriod === 'yearly' && kpiData.yearlyData) {
+        // Filter to specific quarter if needed
+        if (timeValue) {
+          const quarterData = kpiData.quarterlyData.find(d => d.name === `Q${timeValue}`);
+          if (quarterData) {
+            result[kpiId].current = quarterData.value;
+            result[kpiId].target = quarterData.target;
+            result[kpiId].progress = Math.round((quarterData.value / quarterData.target) * 100);
+          }
+        }
+      } else if (timeRange === 'yearly' && kpiData.yearlyData) {
         result[kpiId].chartData = kpiData.yearlyData;
+        // Filter to specific year if needed
+        if (timeValue) {
+          const yearData = kpiData.yearlyData.find(d => d.name === `${timeValue}`);
+          if (yearData) {
+            result[kpiId].current = yearData.value;
+            result[kpiId].target = yearData.target;
+            result[kpiId].progress = Math.round((yearData.value / yearData.target) * 100);
+          }
+        }
       }
     });
     return result;
-  }, [data, timePeriod]);
-
+  }, [data, timeRange, timeValue]);
+  
+  // Reset time value when time range changes
+  useEffect(() => {
+    const options = getTimePeriodOptions();
+    if (options.length > 0) {
+      setTimeValue(options[0].value);
+    }
+  }, [timeRange]);
+  
   const handleAccordionChange = (sectionId) => (event, isExpanded) => {
     setExpanded(prev => 
       isExpanded 
@@ -81,12 +165,20 @@ const TemplateDashboard = ({
     );
   };
   
-  const handleTimePeriodChange = (event, newTimePeriod) => {
-    if (newTimePeriod !== null) {
-      setTimePeriod(newTimePeriod);
+  const handleTimeRangeChange = (event, newTimeRange) => {
+    if (newTimeRange !== null) {
+      setTimeRange(newTimeRange);
     }
   };
-
+  
+  const handleTimeValueChange = (event) => {
+    setTimeValue(event.target.value);
+  };
+  
+  // Get table rows from adapter
+  const tableRows = domainAdapter.getTableRows ? domainAdapter.getTableRows(processedData) : [];
+  const tableHeaders = domainAdapter.tableHeaders || [];
+  
   return (
     <>
       <Box sx={{ flexGrow: 1, p: 3 }}>
@@ -112,10 +204,10 @@ const TemplateDashboard = ({
             <Typography variant="subtitle1" sx={{ minWidth: 120 }}>Time Period:</Typography>
             
             <ToggleButtonGroup
-              value={timePeriod}
+              value={timeRange}
               exclusive
-              onChange={handleTimePeriodChange}
-              aria-label="time period"
+              onChange={handleTimeRangeChange}
+              aria-label="time range"
               size="small"
             >
               <ToggleButton value="weekly" aria-label="weekly">
@@ -131,6 +223,23 @@ const TemplateDashboard = ({
                 Yearly
               </ToggleButton>
             </ToggleButtonGroup>
+            
+            <FormControl sx={{ minWidth: 120 }} size="small">
+              <InputLabel id="time-period-select-label">Period</InputLabel>
+              <Select
+                labelId="time-period-select-label"
+                id="time-period-select"
+                value={timeValue}
+                label="Period"
+                onChange={handleTimeValueChange}
+              >
+                {getTimePeriodOptions().map(option => (
+                  <MenuItem key={option.value} value={option.value}>
+                    {option.label}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
           </Box>
         </Paper>
         
@@ -145,7 +254,7 @@ const TemplateDashboard = ({
           }}
         >
           <Typography variant="h5" gutterBottom sx={{ fontWeight: 'bold', color: '#1976d2' }}>
-            {domainAdapter.getPrimaryMetricName(timePeriod, processedData[domainAdapter.getPrimaryMetric().id])}
+            {domainAdapter.getPrimaryMetricName(timeRange, processedData[domainAdapter.getPrimaryMetric().id])}
           </Typography>
           
           <Grid container spacing={3}>
@@ -201,30 +310,52 @@ const TemplateDashboard = ({
         </Paper>
         
         {/* KPI Summary Table */}
-        <TableContainer component={Paper} sx={{ mb: 4 }}>
-          <Table aria-label="KPI summary table">
-            <TableHead>
-              <TableRow>
-                {domainAdapter.tableHeaders.map(header => (
-                  <TableCell key={header.id} align={header.align || 'left'}>
-                    {header.label}
-                  </TableCell>
-                ))}
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {domainAdapter.getTableRows(processedData).map((row, index) => (
-                <TableRow key={index}>
-                  {domainAdapter.tableHeaders.map(header => (
-                    <TableCell key={`${index}-${header.id}`} align={header.align || 'left'}>
-                      {domainAdapter.formatTableCell(row[header.id], header.format)}
-                    </TableCell>
+        {tableRows.length > 0 && (
+          <Box sx={{ mb: 4 }}>
+            <Typography variant="h5" sx={{ mb: 2 }}>
+              Summary
+            </Typography>
+            <TableContainer component={Paper} elevation={2}>
+              <Table aria-label="summary table" size="small">
+                <TableHead>
+                  <TableRow>
+                    {tableHeaders.map((header, index) => (
+                      <TableCell 
+                        key={index}
+                        align={header.align || 'left'}
+                        sx={{ 
+                          fontWeight: 'bold',
+                          backgroundColor: 'primary.light',
+                          color: 'primary.contrastText'
+                        }}
+                      >
+                        {header.label}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {tableRows.map((row, rowIndex) => (
+                    <TableRow key={rowIndex}>
+                      {tableHeaders.map((header, cellIndex) => (
+                        <TableCell 
+                          key={cellIndex}
+                          align={header.align || 'left'}
+                        >
+                          {domainAdapter.formatTableCell(
+                            row[header.id], 
+                            header.format, 
+                            row.formatInfo
+                          )}
+                        </TableCell>
+                      ))}
+                    </TableRow>
                   ))}
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </Box>
+        )}
         
         {/* Render each section as an accordion */}
         {sections.map(section => {
