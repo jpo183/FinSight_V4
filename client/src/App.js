@@ -6,6 +6,8 @@ import Dashboard from './components/Dashboard/Dashboard';
 import Config from './components/Config/Config';
 import Sales from './components/Sales/Sales';
 import SalesAnalytics from './components/Sales/Analytics/SalesAnalytics';
+import SalesDashboard from './components/Sales/Dashboard/SalesDashboard';
+import KpiManagementPage from './pages/Sales/KpiManagementPage';
 import { Box } from '@mui/material';
 
 const AppLayout = ({ children }) => (
@@ -42,6 +44,8 @@ function App() {
             <Config />
           </AppLayout>
         } />
+        <Route path="/sales/dashboard" element={<SalesDashboard />} />
+        <Route path="/sales/kpi/manage" element={<KpiManagementPage />} />
       </Routes>
     </Router>
   );
