@@ -44,8 +44,16 @@ function App() {
             <Config />
           </AppLayout>
         } />
-        <Route path="/sales/dashboard" element={<SalesDashboard />} />
-        <Route path="/sales/kpi/manage" element={<KpiManagementPage />} />
+        <Route path="/sales/dashboard" element={
+          <AppLayout>
+            <SalesDashboard />
+          </AppLayout>
+        } />
+        <Route path="/sales/kpi/manage" element={
+          <AppLayout>
+            <KpiManagementPage />
+          </AppLayout>
+        } />
       </Routes>
     </Router>
   );
