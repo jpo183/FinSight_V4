@@ -282,9 +282,72 @@ const SalesDashboard = () => {
     fetchData();
   }, []);
   
-  // Helper function to format values based on unit
+  // Get table rows based on the selected time range
+  const getTableRows = () => {
+    return kpiSummary.map((kpi) => {
+      // Get the appropriate value and goal based on the selected time range
+      let value, goal;
+      
+      if (timeRangeView === 'annual') {
+        value = kpi.periods?.annual?.value || 0;
+        goal = kpi.periods?.annual?.goal || 0;
+      } else if (timeRangeView === 'quarterly') {
+        value = kpi.periods?.quarterly?.[selectedPeriod.quarter]?.value || 0;
+        goal = kpi.periods?.quarterly?.[selectedPeriod.quarter]?.goal || 0;
+      } else if (timeRangeView === 'monthly') {
+        value = kpi.periods?.monthly?.[selectedPeriod.month]?.value || 0;
+        goal = kpi.periods?.monthly?.[selectedPeriod.month]?.goal || 0;
+      }
+      
+      // If periods data isn't available, fall back to the main value and goal
+      if (value === 0 && goal === 0) {
+        value = kpi.value || 0;
+        goal = kpi.goal || 0;
+      }
+      
+      const percentOfGoal = calculatePercentage(value, goal);
+      const isAhead = percentOfGoal >= progress.yearProgress;
+      
+      return (
+        <TableRow 
+          key={kpi.id}
+          sx={{ 
+            '&:last-child td, &:last-child th': { border: 0 },
+            backgroundColor: isAhead ? 'rgba(76, 175, 80, 0.1)' : 'rgba(244, 67, 54, 0.1)'
+          }}
+        >
+          <TableCell component="th" scope="row">
+            {kpi.name}
+          </TableCell>
+          <TableCell>{kpi.category}</TableCell>
+          <TableCell align="right">{formatValue(value, kpi.unit)}</TableCell>
+          <TableCell align="right">{formatValue(goal, kpi.unit)}</TableCell>
+          <TableCell align="right">
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+              <LinearProgress 
+                variant="determinate" 
+                value={Math.min(percentOfGoal, 100)} 
+                sx={{ width: 60, mr: 1, height: 8, borderRadius: 5 }}
+                color={isAhead ? "success" : "error"}
+              />
+              {formatPercentage(percentOfGoal)}
+            </Box>
+          </TableCell>
+          <TableCell align="center">
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              {getTrendIcon(kpi.trend)}
+            </Box>
+          </TableCell>
+        </TableRow>
+      );
+    });
+  };
+  
+  // Helper function to format values based on their unit
   const formatValue = (value, unit) => {
-    switch (unit) {
+    if (!value && value !== 0) return 'N/A';
+    
+    switch(unit) {
       case 'currency':
         return formatCurrency(value);
       case 'percentage':
@@ -294,168 +357,21 @@ const SalesDashboard = () => {
     }
   };
   
-  // Get trend icon based on trend direction
-  const getTrendIcon = (trend) => {
-    switch (trend) {
-      case 'up':
-        return <TrendingUpIcon sx={{ color: 'success.main' }} />;
-      case 'down':
-        return <TrendingDownIcon sx={{ color: 'error.main' }} />;
-      default:
-        return <TrendingFlatIcon sx={{ color: 'info.main' }} />;
-    }
-  };
-  
-  // Calculate percentage of goal
+  // Helper function to calculate percentage
   const calculatePercentage = (value, goal) => {
+    if (!goal || goal === 0) return 0;
     return (value / goal) * 100;
   };
   
-  // Get current KPI data based on selected time range and period
-  const getCurrentKpiData = (kpi) => {
-    switch (timeRangeView) {
-      case 'annual':
-        return {
-          value: kpi.periods.annual.value,
-          goal: kpi.periods.annual.goal
-        };
-      case 'quarterly':
-        return {
-          value: kpi.periods.quarterly[selectedPeriod.quarter].value,
-          goal: kpi.periods.quarterly[selectedPeriod.quarter].goal
-        };
-      case 'monthly':
-        return {
-          value: kpi.periods.monthly[selectedPeriod.month].value,
-          goal: kpi.periods.monthly[selectedPeriod.month].goal,
-          weeks: kpi.periods.monthly[selectedPeriod.month].weeks
-        };
+  // Helper function to get trend icon
+  const getTrendIcon = (trend) => {
+    switch(trend) {
+      case 'up':
+        return <TrendingUpIcon color="success" />;
+      case 'down':
+        return <TrendingDownIcon color="error" />;
       default:
-        return { value: kpi.value, goal: kpi.goal };
-    }
-  };
-  
-  // Generate table rows based on time range view
-  const getTableRows = () => {
-    if (timeRangeView === 'monthly') {
-      // For monthly view, show weekly breakdown
-      const weeks = ['Week 1', 'Week 2', 'Week 3', 'Week 4'];
-      return (
-        <>
-          {kpiSummary.map((kpi) => {
-            const kpiData = getCurrentKpiData(kpi);
-            const monthlyPercentOfGoal = calculatePercentage(kpiData.value, kpiData.goal);
-            const isMonthlyAhead = monthlyPercentOfGoal >= 25 * weeks.length; // Assuming equal distribution
-            
-            return (
-              <React.Fragment key={kpi.id}>
-                <TableRow 
-                  sx={{ 
-                    backgroundColor: isMonthlyAhead ? 'rgba(76, 175, 80, 0.1)' : 'rgba(244, 67, 54, 0.1)',
-                    '& > td': { fontWeight: 'bold' }
-                  }}
-                >
-                  <TableCell component="th" scope="row">
-                    {kpi.name}
-                  </TableCell>
-                  <TableCell>{kpi.category}</TableCell>
-                  <TableCell align="right">{formatValue(kpiData.value, kpi.unit)}</TableCell>
-                  <TableCell align="right">{formatValue(kpiData.goal, kpi.unit)}</TableCell>
-                  <TableCell align="right">
-                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
-                      <LinearProgress 
-                        variant="determinate" 
-                        value={Math.min(monthlyPercentOfGoal, 100)} 
-                        sx={{ width: 60, mr: 1, height: 8, borderRadius: 5 }}
-                        color={isMonthlyAhead ? "success" : "error"}
-                      />
-                      {formatPercentage(monthlyPercentOfGoal)}
-                    </Box>
-                  </TableCell>
-                  <TableCell align="center">
-                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      {getTrendIcon(kpi.trend)}
-                    </Box>
-                  </TableCell>
-                </TableRow>
-                
-                {/* Weekly breakdown rows */}
-                {kpiData.weeks && kpiData.weeks.map((weekValue, index) => {
-                  const weeklyGoal = kpiData.goal / 4; // Simple division for demo
-                  const weeklyPercentOfGoal = calculatePercentage(weekValue, weeklyGoal);
-                  const isWeeklyAhead = weeklyPercentOfGoal >= 100;
-                  
-                  return (
-                    <TableRow 
-                      key={`${kpi.id}-week-${index}`}
-                      sx={{ 
-                        backgroundColor: 'rgba(0, 0, 0, 0.02)'
-                      }}
-                    >
-                      <TableCell sx={{ pl: 4 }}>{weeks[index]}</TableCell>
-                      <TableCell></TableCell>
-                      <TableCell align="right">{formatValue(weekValue, kpi.unit)}</TableCell>
-                      <TableCell align="right">{formatValue(weeklyGoal, kpi.unit)}</TableCell>
-                      <TableCell align="right">
-                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
-                          <LinearProgress 
-                            variant="determinate" 
-                            value={Math.min(weeklyPercentOfGoal, 100)} 
-                            sx={{ width: 60, mr: 1, height: 6, borderRadius: 5 }}
-                            color={isWeeklyAhead ? "success" : "error"}
-                          />
-                          {formatPercentage(weeklyPercentOfGoal)}
-                        </Box>
-                      </TableCell>
-                      <TableCell align="center"></TableCell>
-                    </TableRow>
-                  );
-                })}
-              </React.Fragment>
-            );
-          })}
-        </>
-      );
-    } else {
-      // For annual and quarterly views, show regular rows
-      return kpiSummary.map((kpi) => {
-        const kpiData = getCurrentKpiData(kpi);
-        const percentOfGoal = calculatePercentage(kpiData.value, kpiData.goal);
-        const isAhead = percentOfGoal >= (timeRangeView === 'annual' ? progress.yearProgress : 100 * (1/3)); // For quarterly, assume 1/3 through quarter
-        
-        return (
-          <TableRow 
-            key={kpi.id}
-            sx={{ 
-              '&:last-child td, &:last-child th': { border: 0 },
-              backgroundColor: isAhead ? 'rgba(76, 175, 80, 0.1)' : 'rgba(244, 67, 54, 0.1)'
-            }}
-          >
-            <TableCell component="th" scope="row">
-              {kpi.name}
-            </TableCell>
-            <TableCell>{kpi.category}</TableCell>
-            <TableCell align="right">{formatValue(kpiData.value, kpi.unit)}</TableCell>
-            <TableCell align="right">{formatValue(kpiData.goal, kpi.unit)}</TableCell>
-            <TableCell align="right">
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
-                <LinearProgress 
-                  variant="determinate" 
-                  value={Math.min(percentOfGoal, 100)} 
-                  sx={{ width: 60, mr: 1, height: 8, borderRadius: 5 }}
-                  color={isAhead ? "success" : "error"}
-                />
-                {formatPercentage(percentOfGoal)}
-              </Box>
-            </TableCell>
-            <TableCell align="center">
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                {getTrendIcon(kpi.trend)}
-              </Box>
-            </TableCell>
-          </TableRow>
-        );
-      });
+        return <TrendingFlatIcon color="action" />;
     }
   };
 
