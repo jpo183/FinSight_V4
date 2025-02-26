@@ -57,22 +57,32 @@ const SalesDashboard = () => {
         const kpiConfigs = storedKpis ? JSON.parse(storedKpis) : [];
         console.log('Parsed KPI Configs:', kpiConfigs);
         
+        // Fetch goals from localStorage (or would be from API in production)
+        const storedGoals = localStorage.getItem('salesGoals');
+        const goals = storedGoals ? JSON.parse(storedGoals) : [];
+        console.log('Goals loaded:', goals);
+        
         // Generate predictable test data for each KPI
         const mockData = {};
         kpiConfigs.forEach((kpi, index) => {
           // Use the KPI ID to generate predictable values
           const kpiId = kpi.id;
           const baseValue = 100000 + (index * 10000); // Increases by 10k for each KPI
-          const baseTarget = baseValue * 1.2; // Always 20% higher than value
+          
+          // Find goal for this KPI if it exists
+          const kpiGoal = goals.find(goal => goal.kpi_id === kpiId);
+          const baseTarget = kpiGoal ? parseFloat(kpiGoal.target_value) : null;
+          const progress = baseTarget ? Math.round((baseValue / baseTarget) * 100) : null;
           
           // Generate weekly data (last 12 weeks)
           const weeklyData = Array(12).fill().map((_, i) => {
             // Weekly values with some variation
             const weekFactor = 0.8 + (Math.sin(i / 6 * Math.PI) * 0.3); // Creates a wave pattern
+            const value = Math.floor((baseValue / 52) * weekFactor * 4); // 4 weeks worth of value
             return {
               name: `Week ${i+1}`,
-              value: Math.floor((baseValue / 52) * weekFactor * 4), // 4 weeks worth of value
-              target: Math.floor((baseTarget / 52) * weekFactor * 4) // 4 weeks worth of target
+              value: value,
+              target: baseTarget ? Math.floor((baseTarget / 52) * weekFactor * 4) : null
             };
           });
           
@@ -80,10 +90,11 @@ const SalesDashboard = () => {
           const monthlyData = Array(12).fill().map((_, i) => {
             // Monthly values with seasonal variation
             const monthFactor = 0.7 + (Math.sin((i / 11) * Math.PI) * 0.4); // Creates a seasonal pattern
+            const value = Math.floor((baseValue / 12) * monthFactor);
             return {
               name: `Month ${i+1}`,
-              value: Math.floor((baseValue / 12) * monthFactor),
-              target: Math.floor((baseTarget / 12) * monthFactor)
+              value: value,
+              target: baseTarget ? Math.floor((baseTarget / 12) * monthFactor) : null
             };
           });
           
@@ -91,10 +102,11 @@ const SalesDashboard = () => {
           const quarterlyData = Array(4).fill().map((_, i) => {
             // Quarterly values with some variation
             const quarterFactor = 0.9 + (Math.sin(i / 2 * Math.PI) * 0.2); // Creates a wave pattern
+            const value = Math.floor((baseValue / 4) * quarterFactor);
             return {
               name: `Q${i+1}`,
-              value: Math.floor((baseValue / 4) * quarterFactor),
-              target: Math.floor((baseTarget / 4) * quarterFactor)
+              value: value,
+              target: baseTarget ? Math.floor((baseTarget / 4) * quarterFactor) : null
             };
           });
           
@@ -102,18 +114,19 @@ const SalesDashboard = () => {
           const yearlyData = Array(3).fill().map((_, i) => {
             // Yearly values with growth trend
             const yearFactor = 0.8 + (i * 0.1); // Each year grows by 10%
+            const value = Math.floor(baseValue * yearFactor);
             return {
               name: `${new Date().getFullYear() - 2 + i}`,
-              value: Math.floor(baseValue * yearFactor),
-              target: Math.floor(baseTarget * yearFactor)
+              value: value,
+              target: baseTarget ? Math.floor(baseTarget * yearFactor) : null
             };
           });
           
           mockData[kpiId] = {
             current: baseValue,
             target: baseTarget,
-            progress: 80, // Fixed at 80% for all KPIs
-            status: 'neutral',
+            progress: progress,
+            status: progress ? (progress >= 100 ? 'positive' : progress >= 80 ? 'neutral' : 'negative') : 'neutral',
             chartData: monthlyData, // Default to monthly data
             weeklyData: weeklyData,
             monthlyData: monthlyData,

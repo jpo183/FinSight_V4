@@ -9,6 +9,7 @@ import SalesAnalytics from './components/Sales/Analytics/SalesAnalytics';
 import SalesDashboard from './components/kpi/dashboards/SalesDashboard';
 import KpiManagementPage from './pages/Sales/KpiManagementPage';
 import { Box } from '@mui/material';
+import GoalManagement from './components/kpi/goals/GoalManagement';
 
 const AppLayout = ({ children }) => (
   <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
@@ -54,6 +55,7 @@ function App() {
             <KpiManagementPage />
           </AppLayout>
         } />
+        <Route path="/goals" element={<GoalManagement />} />
       </Routes>
     </Router>
   );

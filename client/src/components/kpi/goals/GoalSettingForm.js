@@ -44,8 +44,8 @@ const GoalSettingForm = ({ onSubmit, initialData = null, kpiDefinitions = [], en
     if (initialData) {
       setFormData({
         ...initialData,
-        start_date: new Date(initialData.start_date),
-        end_date: new Date(initialData.end_date)
+        start_date: initialData.start_date ? new Date(initialData.start_date) : new Date(new Date().getFullYear(), 0, 1),
+        end_date: initialData.end_date ? new Date(initialData.end_date) : new Date(new Date().getFullYear(), 11, 31)
       });
     }
   }, [initialData]);
@@ -97,199 +97,177 @@ const GoalSettingForm = ({ onSubmit, initialData = null, kpiDefinitions = [], en
     setNotification(prev => ({ ...prev, open: false }));
   };
 
-  // Get unit for selected KPI
-  const selectedKpi = kpiDefinitions.find(kpi => kpi.kpi_id === formData.kpi_id);
-  const unit = selectedKpi?.unit || '';
-  const dataType = selectedKpi?.data_type || '';
+  // Get data type for selected KPI
+  const selectedKpi = kpiDefinitions.find(kpi => kpi.id === formData.kpi_id);
+  const dataType = selectedKpi?.dataType || '';
 
   // Determine if we should show currency symbol
   const showCurrency = dataType === 'currency';
 
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns}>
-      <Paper sx={{ p: 3, mb: 3 }}>
-        <Typography variant="h6" gutterBottom>
-          {initialData ? 'Edit Goal' : 'Create New Goal'}
-        </Typography>
-        
-        <Box component="form" onSubmit={handleSubmit} noValidate>
-          <Grid container spacing={3}>
-            <Grid item xs={12} md={6}>
-              <FormControl fullWidth margin="normal" required>
-                <InputLabel>KPI</InputLabel>
-                <Select
-                  value={formData.kpi_id || ''}
-                  onChange={(e) => handleChange('kpi_id', e.target.value)}
-                >
-                  {kpiDefinitions.map((kpi) => (
-                    <MenuItem key={kpi.id} value={kpi.id}>
-                      {kpi.name}
+      <Box component="form" onSubmit={handleSubmit} noValidate>
+        <Grid container spacing={3}>
+          <Grid item xs={12} md={6}>
+            <FormControl fullWidth margin="normal" required>
+              <InputLabel>KPI</InputLabel>
+              <Select
+                value={formData.kpi_id || ''}
+                onChange={(e) => handleChange('kpi_id', e.target.value)}
+                label="KPI"
+              >
+                {kpiDefinitions.map((kpi) => (
+                  <MenuItem key={kpi.id} value={kpi.id}>
+                    {kpi.name}
+                  </MenuItem>
+                ))}
+              </Select>
+              <FormHelperText>Select the KPI for this goal</FormHelperText>
+            </FormControl>
+          </Grid>
+          
+          <Grid item xs={12} md={6}>
+            <FormControl fullWidth required>
+              <InputLabel>Entity Type</InputLabel>
+              <Select
+                value={formData.entity_type || 'department'}
+                onChange={(e) => handleChange('entity_type', e.target.value)}
+                label="Entity Type"
+              >
+                <MenuItem value="organization">Organization</MenuItem>
+                <MenuItem value="department">Department</MenuItem>
+                <MenuItem value="team">Team</MenuItem>
+                <MenuItem value="individual">Individual</MenuItem>
+              </Select>
+            </FormControl>
+          </Grid>
+          
+          <Grid item xs={12} md={6}>
+            <FormControl fullWidth required>
+              <InputLabel>Entity</InputLabel>
+              <Select
+                value={formData.entity_id || ''}
+                onChange={(e) => handleChange('entity_id', e.target.value)}
+                label="Entity"
+              >
+                {entities
+                  .filter(entity => entity.type === formData.entity_type)
+                  .map(entity => (
+                    <MenuItem key={entity.id} value={entity.id}>
+                      {entity.name}
                     </MenuItem>
                   ))}
-                </Select>
-                <FormHelperText>Select the KPI for this goal</FormHelperText>
-              </FormControl>
-            </Grid>
-            
-            <Grid item xs={12} md={6}>
-              <FormControl fullWidth required>
-                <InputLabel>Entity Type</InputLabel>
-                <Select
-                  name="entity_type"
-                  value={formData.entity_type}
-                  onChange={(e) => handleChange('entity_type', e.target.value)}
-                  label="Entity Type"
-                >
-                  <MenuItem value="organization">Organization</MenuItem>
-                  <MenuItem value="department">Department</MenuItem>
-                  <MenuItem value="team">Team</MenuItem>
-                  <MenuItem value="individual">Individual</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
-            
-            <Grid item xs={12} md={6}>
-              <FormControl fullWidth required>
-                <InputLabel>Entity</InputLabel>
-                <Select
-                  name="entity_id"
-                  value={formData.entity_id}
-                  onChange={(e) => handleChange('entity_id', e.target.value)}
-                  label="Entity"
-                >
-                  {entities
-                    .filter(entity => entity.type === formData.entity_type)
-                    .map(entity => (
-                      <MenuItem key={entity.id} value={entity.id}>
-                        {entity.name}
-                      </MenuItem>
-                    ))}
-                </Select>
-              </FormControl>
-            </Grid>
-            
-            <Grid item xs={12} md={6}>
-              <FormControl fullWidth required>
-                <InputLabel>Time Period</InputLabel>
-                <Select
-                  name="time_period"
-                  value={formData.time_period}
-                  onChange={(e) => handleChange('time_period', e.target.value)}
-                  label="Time Period"
-                >
-                  <MenuItem value="monthly">Monthly</MenuItem>
-                  <MenuItem value="quarterly">Quarterly</MenuItem>
-                  <MenuItem value="yearly">Yearly</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
-            
-            <Grid item xs={12} md={6}>
-              <DatePicker
-                label="Start Date"
-                value={formData.start_date}
-                onChange={handleDateChange('start_date')}
-                renderInput={(params) => <TextField {...params} fullWidth required />}
-              />
-            </Grid>
-            
-            <Grid item xs={12} md={6}>
-              <DatePicker
-                label="End Date"
-                value={formData.end_date}
-                onChange={handleDateChange('end_date')}
-                renderInput={(params) => <TextField {...params} fullWidth required />}
-              />
-            </Grid>
-            
-            <Grid item xs={12} md={4}>
-              <TextField
-                fullWidth
-                required
-                label="Target Value"
-                name="target_value"
-                value={formData.target_value}
-                onChange={(e) => handleChange('target_value', e.target.value)}
-                type="number"
-                InputProps={{
-                  startAdornment: showCurrency ? (
-                    <InputAdornment position="start">$</InputAdornment>
-                  ) : null,
-                  endAdornment: !showCurrency && unit ? (
-                    <InputAdornment position="end">{unit}</InputAdornment>
-                  ) : null,
-                }}
-              />
-            </Grid>
-            
-            <Grid item xs={12} md={4}>
-              <TextField
-                fullWidth
-                label="Stretch Target"
-                name="stretch_target"
-                value={formData.stretch_target}
-                onChange={(e) => handleChange('stretch_target', e.target.value)}
-                type="number"
-                InputProps={{
-                  startAdornment: showCurrency ? (
-                    <InputAdornment position="start">$</InputAdornment>
-                  ) : null,
-                  endAdornment: !showCurrency && unit ? (
-                    <InputAdornment position="end">{unit}</InputAdornment>
-                  ) : null,
-                }}
-              />
-            </Grid>
-            
-            <Grid item xs={12} md={4}>
-              <TextField
-                fullWidth
-                label="Minimum Target"
-                name="minimum_target"
-                value={formData.minimum_target}
-                onChange={(e) => handleChange('minimum_target', e.target.value)}
-                type="number"
-                InputProps={{
-                  startAdornment: showCurrency ? (
-                    <InputAdornment position="start">$</InputAdornment>
-                  ) : null,
-                  endAdornment: !showCurrency && unit ? (
-                    <InputAdornment position="end">{unit}</InputAdornment>
-                  ) : null,
-                }}
-              />
-            </Grid>
-            
-            <Grid item xs={12} md={6}>
-              <FormControl fullWidth required>
-                <InputLabel>Status</InputLabel>
-                <Select
-                  name="status"
-                  value={formData.status}
-                  onChange={(e) => handleChange('status', e.target.value)}
-                  label="Status"
-                >
-                  <MenuItem value="draft">Draft</MenuItem>
-                  <MenuItem value="active">Active</MenuItem>
-                  <MenuItem value="completed">Completed</MenuItem>
-                  <MenuItem value="cancelled">Cancelled</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
-            
-            <Grid item xs={12}>
-              <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
-                <Button
-                  type="submit"
-                  variant="contained"
-                  color="primary"
-                >
-                  {initialData ? 'Update Goal' : 'Create Goal'}
-                </Button>
-              </Box>
-            </Grid>
+              </Select>
+            </FormControl>
           </Grid>
-        </Box>
+          
+          <Grid item xs={12} md={6}>
+            <FormControl fullWidth required>
+              <InputLabel>Time Period</InputLabel>
+              <Select
+                value={formData.time_period || 'yearly'}
+                onChange={(e) => handleChange('time_period', e.target.value)}
+                label="Time Period"
+              >
+                <MenuItem value="monthly">Monthly</MenuItem>
+                <MenuItem value="quarterly">Quarterly</MenuItem>
+                <MenuItem value="yearly">Yearly</MenuItem>
+              </Select>
+            </FormControl>
+          </Grid>
+          
+          <Grid item xs={12} md={6}>
+            <DatePicker
+              label="Start Date"
+              value={formData.start_date}
+              onChange={(date) => handleChange('start_date', date)}
+              slotProps={{ textField: { fullWidth: true, required: true } }}
+            />
+          </Grid>
+          
+          <Grid item xs={12} md={6}>
+            <DatePicker
+              label="End Date"
+              value={formData.end_date}
+              onChange={(date) => handleChange('end_date', date)}
+              slotProps={{ textField: { fullWidth: true, required: true } }}
+            />
+          </Grid>
+          
+          <Grid item xs={12} md={4}>
+            <TextField
+              fullWidth
+              required
+              label="Target Value"
+              value={formData.target_value || ''}
+              onChange={(e) => handleChange('target_value', e.target.value)}
+              type="number"
+              InputProps={{
+                startAdornment: showCurrency ? (
+                  <InputAdornment position="start">$</InputAdornment>
+                ) : null
+              }}
+            />
+          </Grid>
+          
+          <Grid item xs={12} md={4}>
+            <TextField
+              fullWidth
+              label="Stretch Target"
+              value={formData.stretch_target || ''}
+              onChange={(e) => handleChange('stretch_target', e.target.value)}
+              type="number"
+              InputProps={{
+                startAdornment: showCurrency ? (
+                  <InputAdornment position="start">$</InputAdornment>
+                ) : null
+              }}
+            />
+          </Grid>
+          
+          <Grid item xs={12} md={4}>
+            <TextField
+              fullWidth
+              label="Minimum Target"
+              value={formData.minimum_target || ''}
+              onChange={(e) => handleChange('minimum_target', e.target.value)}
+              type="number"
+              InputProps={{
+                startAdornment: showCurrency ? (
+                  <InputAdornment position="start">$</InputAdornment>
+                ) : null
+              }}
+            />
+          </Grid>
+          
+          <Grid item xs={12} md={6}>
+            <FormControl fullWidth required>
+              <InputLabel>Status</InputLabel>
+              <Select
+                value={formData.status || 'draft'}
+                onChange={(e) => handleChange('status', e.target.value)}
+                label="Status"
+              >
+                <MenuItem value="draft">Draft</MenuItem>
+                <MenuItem value="active">Active</MenuItem>
+                <MenuItem value="completed">Completed</MenuItem>
+                <MenuItem value="cancelled">Cancelled</MenuItem>
+              </Select>
+            </FormControl>
+          </Grid>
+          
+          <Grid item xs={12}>
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
+              <Button
+                type="submit"
+                variant="contained"
+                color="primary"
+              >
+                {initialData ? 'Update Goal' : 'Create Goal'}
+              </Button>
+            </Box>
+          </Grid>
+        </Grid>
         
         <Snackbar
           open={notification.open}
@@ -304,7 +282,7 @@ const GoalSettingForm = ({ onSubmit, initialData = null, kpiDefinitions = [], en
             {notification.message}
           </Alert>
         </Snackbar>
-      </Paper>
+      </Box>
     </LocalizationProvider>
   );
 };
