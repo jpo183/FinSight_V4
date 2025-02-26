@@ -6,10 +6,11 @@ import {
   Tabs, 
   Tab, 
   Paper,
-  Button
+  Button,
+  AppBar,
+  Toolbar
 } from '@mui/material';
-import { Link, useNavigate } from 'react-router-dom';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import { useNavigate } from 'react-router-dom';
 
 // Import our KPI management components
 import GoalSettingForm from '../../components/kpi/goals/GoalSettingForm';
@@ -49,71 +50,75 @@ const KpiManagementPage = () => {
   };
 
   return (
-    <Container maxWidth="lg">
-      <Box sx={{ my: 4 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-          <Button 
-            onClick={() => navigate('/sales/dashboard')}
-            startIcon={<ArrowBackIcon />}
-            sx={{ mr: 2 }}
-          >
-            Back to Dashboard
+    <>
+      <AppBar position="static">
+        <Toolbar>
+          <Button color="inherit" onClick={() => navigate('/sales/dashboard')}>
+            Back to Sales Dashboard
           </Button>
-          <Typography variant="h4" component="h1">
+          <Button color="inherit" onClick={() => navigate('/dashboard')}>
+            Back to Main
+          </Button>
+        </Toolbar>
+      </AppBar>
+      
+      <Container maxWidth="lg">
+        <Box sx={{ my: 4 }}>
+          <Typography variant="h4" component="h1" sx={{ mb: 3 }}>
             Sales KPI Management
           </Typography>
+          
+          <Paper sx={{ mb: 3 }}>
+            <Tabs 
+              value={tabValue} 
+              onChange={handleTabChange}
+              indicatorColor="primary"
+              textColor="primary"
+              variant="fullWidth"
+            >
+              <Tab label="Set Goals" />
+              <Tab label="Define KPIs" />
+              <Tab label="View History" />
+            </Tabs>
+          </Paper>
+          
+          {tabValue === 0 && (
+            <Box>
+              <Typography variant="h6" gutterBottom>
+                Create or Update Sales Goals
+              </Typography>
+              <GoalSettingForm 
+                onSubmit={handleSubmitGoal}
+                kpiDefinitions={kpiDefinitions}
+                entities={entities}
+              />
+            </Box>
+          )}
+          
+          {tabValue === 1 && (
+            <Box>
+              <Typography variant="h6" gutterBottom>
+                Define New KPIs
+              </Typography>
+              <Typography>
+                KPI definition form would go here
+              </Typography>
+            </Box>
+          )}
+          
+          {tabValue === 2 && (
+            <Box>
+              <Typography variant="h6" gutterBottom>
+                KPI History and Performance
+              </Typography>
+              <Typography>
+                Historical KPI data would go here
+              </Typography>
+            </Box>
+          )}
         </Box>
-        
-        <Paper sx={{ mb: 3 }}>
-          <Tabs 
-            value={tabValue} 
-            onChange={handleTabChange}
-            indicatorColor="primary"
-            textColor="primary"
-            variant="fullWidth"
-          >
-            <Tab label="Set Goals" />
-            <Tab label="Define KPIs" />
-            <Tab label="View History" />
-          </Tabs>
-        </Paper>
-        
-        {tabValue === 0 && (
-          <Box>
-            <Typography variant="h6" gutterBottom>
-              Create or Update Sales Goals
-            </Typography>
-            <GoalSettingForm 
-              onSubmit={handleSubmitGoal}
-              kpiDefinitions={kpiDefinitions}
-              entities={entities}
-            />
-          </Box>
-        )}
-        
-        {tabValue === 1 && (
-          <Box>
-            <Typography variant="h6" gutterBottom>
-              Define New KPIs
-            </Typography>
-            <Typography>
-              KPI definition form would go here
-            </Typography>
-          </Box>
-        )}
-        
-        {tabValue === 2 && (
-          <Box>
-            <Typography variant="h6" gutterBottom>
-              KPI History and Performance
-            </Typography>
-            <Typography>
-              Historical KPI data would go here
-            </Typography>
-          </Box>
-        )}
-      </Box>
-    </Container>
+      </Container>
+    </>
   );
 };
 
