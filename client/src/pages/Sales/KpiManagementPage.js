@@ -8,7 +8,12 @@ import {
   Paper,
   Button,
   AppBar,
-  Toolbar
+  Toolbar,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  FormHelperText
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 
@@ -100,9 +105,63 @@ const KpiManagementPage = () => {
               <Typography variant="h6" gutterBottom>
                 Define New KPIs
               </Typography>
-              <Typography>
-                KPI definition form would go here
+              <Typography variant="h6" gutterBottom sx={{ mt: 3 }}>
+                Dashboard Display Settings
               </Typography>
+
+              <FormControl fullWidth margin="normal">
+                <InputLabel>Dashboard Section</InputLabel>
+                <Select
+                  value={kpi.dashboardSection || 'none'}
+                  onChange={(e) => handleKpiChange('dashboardSection', e.target.value)}
+                >
+                  <MenuItem value="revenue">Revenue Metrics</MenuItem>
+                  <MenuItem value="pipeline">Pipeline Metrics</MenuItem>
+                  <MenuItem value="customers">Customer Metrics</MenuItem>
+                  <MenuItem value="activity">Activity Metrics</MenuItem>
+                  <MenuItem value="none">Don't Show on Dashboard</MenuItem>
+                </Select>
+                <FormHelperText>Select where this KPI should appear on the dashboard</FormHelperText>
+              </FormControl>
+
+              <FormControl fullWidth margin="normal">
+                <InputLabel>Visualization Type</InputLabel>
+                <Select
+                  value={kpi.visualizationType || 'card'}
+                  onChange={(e) => handleKpiChange('visualizationType', e.target.value)}
+                >
+                  <MenuItem value="card">Metric Card</MenuItem>
+                  <MenuItem value="barChart">Bar Chart</MenuItem>
+                  <MenuItem value="lineChart">Line Chart</MenuItem>
+                  <MenuItem value="pieChart">Pie Chart</MenuItem>
+                  <MenuItem value="none">No Visualization</MenuItem>
+                </Select>
+                <FormHelperText>How should this KPI be visualized on the dashboard?</FormHelperText>
+              </FormControl>
+
+              <FormControl fullWidth margin="normal">
+                <InputLabel>Show in Summary Table</InputLabel>
+                <Select
+                  value={kpi.showInTable ? 'yes' : 'no'}
+                  onChange={(e) => handleKpiChange('showInTable', e.target.value === 'yes')}
+                >
+                  <MenuItem value="yes">Yes</MenuItem>
+                  <MenuItem value="no">No</MenuItem>
+                </Select>
+                <FormHelperText>Should this KPI appear in the dashboard summary table?</FormHelperText>
+              </FormControl>
+
+              <FormControl fullWidth margin="normal">
+                <InputLabel>Primary Dashboard Metric</InputLabel>
+                <Select
+                  value={kpi.isPrimaryMetric ? 'yes' : 'no'}
+                  onChange={(e) => handleKpiChange('isPrimaryMetric', e.target.value === 'yes')}
+                >
+                  <MenuItem value="yes">Yes</MenuItem>
+                  <MenuItem value="no">No</MenuItem>
+                </Select>
+                <FormHelperText>Is this the main KPI for the dashboard?</FormHelperText>
+              </FormControl>
             </Box>
           )}
           

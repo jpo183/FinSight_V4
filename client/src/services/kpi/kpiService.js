@@ -31,6 +31,14 @@ export const kpiService = {
   deleteKpiDefinition: async (kpiId) => {
     const response = await axios.delete(`${API_URL}/kpi-definitions/${kpiId}`);
     return response.data;
+  },
+  
+  // Get KPIs for a specific domain (for dashboard)
+  getDomainKpis: async (domain) => {
+    const response = await axios.get(`${API_URL}/kpi-definitions`, { 
+      params: { domain, includeDashboardSettings: true } 
+    });
+    return response.data;
   }
 };
 
