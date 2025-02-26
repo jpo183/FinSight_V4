@@ -46,8 +46,8 @@ const TemplateDashboard = ({
   const [expanded, setExpanded] = useState(sections.map(s => s.id));
   
   // Time period state
-  const [timeRange, setTimeRange] = useState('monthly');
-  const [timeValue, setTimeValue] = useState(1); // Default to first period
+  const [timePeriod, setTimePeriod] = useState('monthly');
+  const [specificPeriod, setSpecificPeriod] = useState('');
   
   // State for goal setting dialog
   const [openGoalDialog, setOpenGoalDialog] = useState(false);
@@ -55,6 +55,7 @@ const TemplateDashboard = ({
   const [kpiDefinitions, setKpiDefinitions] = useState([]);
   const [entities, setEntities] = useState([]);
   const [currentGoal, setCurrentGoal] = useState(null);
+  const [goalsByKpi, setGoalsByKpi] = useState({});
   
   // Load KPI definitions and entities
   useEffect(() => {
@@ -82,143 +83,131 @@ const TemplateDashboard = ({
     
     // Set current goals for KPIs
     if (goals.length > 0) {
-      const goalsByKpi = {};
+      const goalsMap = {};
       goals.forEach(goal => {
         if (goal.status === 'active') {
-          goalsByKpi[goal.kpi_id] = goal;
+          goalsMap[goal.kpi_id] = goal;
         }
       });
-      setCurrentGoals(goalsByKpi);
+      setGoalsByKpi(goalsMap);
     }
   }, []);
   
-  // Get time period options based on selected range
-  const getTimePeriodOptions = () => {
-    switch(timeRange) {
-      case 'weekly':
-        return Array(12).fill().map((_, i) => ({ value: i+1, label: `Week ${i+1}` }));
-      case 'monthly':
-        return [
-          { value: 1, label: 'January' },
-          { value: 2, label: 'February' },
-          { value: 3, label: 'March' },
-          { value: 4, label: 'April' },
-          { value: 5, label: 'May' },
-          { value: 6, label: 'June' },
-          { value: 7, label: 'July' },
-          { value: 8, label: 'August' },
-          { value: 9, label: 'September' },
-          { value: 10, label: 'October' },
-          { value: 11, label: 'November' },
-          { value: 12, label: 'December' }
-        ];
-      case 'quarterly':
-        return [
-          { value: 1, label: 'Q1' },
-          { value: 2, label: 'Q2' },
-          { value: 3, label: 'Q3' },
-          { value: 4, label: 'Q4' }
-        ];
-      case 'yearly':
-        const currentYear = new Date().getFullYear();
-        return [
-          { value: currentYear-2, label: `${currentYear-2}` },
-          { value: currentYear-1, label: `${currentYear-1}` },
-          { value: currentYear, label: `${currentYear}` }
-        ];
-      default:
-        return [];
+  // Set specific period options based on time period
+  useEffect(() => {
+    if (timePeriod === 'weekly') {
+      setSpecificPeriod('1');
+    } else if (timePeriod === 'monthly') {
+      setSpecificPeriod('1');
+    } else if (timePeriod === 'quarterly') {
+      setSpecificPeriod('1');
+    } else if (timePeriod === 'yearly') {
+      setSpecificPeriod(new Date().getFullYear().toString());
+    }
+  }, [timePeriod]);
+  
+  // Handle time period change
+  const handleTimePeriodChange = (event, newPeriod) => {
+    if (newPeriod !== null) {
+      setTimePeriod(newPeriod);
     }
   };
   
+  // Handle specific period change
+  const handleSpecificPeriodChange = (event) => {
+    setSpecificPeriod(event.target.value);
+  };
+  
+  // Get time period options based on selected period type
+  const getTimePeriodOptions = () => {
+    if (timePeriod === 'weekly') {
+      return Array.from({ length: 52 }, (_, i) => ({
+        value: (i + 1).toString(),
+        label: `Week ${i + 1}`
+      }));
+    } else if (timePeriod === 'monthly') {
+      const months = [
+        'January', 'February', 'March', 'April', 'May', 'June',
+        'July', 'August', 'September', 'October', 'November', 'December'
+      ];
+      return months.map((month, i) => ({
+        value: (i + 1).toString(),
+        label: month
+      }));
+    } else if (timePeriod === 'quarterly') {
+      return Array.from({ length: 4 }, (_, i) => ({
+        value: (i + 1).toString(),
+        label: `Q${i + 1}`
+      }));
+    } else if (timePeriod === 'yearly') {
+      const currentYear = new Date().getFullYear();
+      return Array.from({ length: 3 }, (_, i) => ({
+        value: (currentYear - 2 + i).toString(),
+        label: (currentYear - 2 + i).toString()
+      }));
+    }
+    return [];
+  };
+  
   // Process data based on selected time period
-  const processedData = React.useMemo(() => {
-    const result = {};
+  const processData = (data) => {
+    const processedData = {};
+    
     Object.entries(data).forEach(([kpiId, kpiData]) => {
-      if (!kpiData) return;
+      let filteredData;
       
-      // Create a copy of the data
-      result[kpiId] = { ...kpiData };
+      // Select the right data array based on time period
+      if (timePeriod === 'weekly') {
+        filteredData = kpiData.weeklyData || [];
+      } else if (timePeriod === 'monthly') {
+        filteredData = kpiData.monthlyData || [];
+      } else if (timePeriod === 'quarterly') {
+        filteredData = kpiData.quarterlyData || [];
+      } else if (timePeriod === 'yearly') {
+        filteredData = kpiData.yearlyData || [];
+      } else {
+        filteredData = kpiData.chartData || [];
+      }
       
-      // Update chart data based on selected time range
-      if (timeRange === 'weekly' && kpiData.weeklyData) {
-        result[kpiId].chartData = kpiData.weeklyData;
-        // Filter to specific week if needed
-        if (timeValue) {
-          const weekData = kpiData.weeklyData.find(d => d.name === `Week ${timeValue}`);
-          if (weekData) {
-            result[kpiId].current = weekData.value;
-            result[kpiId].target = weekData.target;
-            result[kpiId].progress = Math.round((weekData.value / weekData.target) * 100);
-          }
+      // Filter by specific period if selected
+      if (specificPeriod) {
+        if (timePeriod === 'yearly') {
+          filteredData = filteredData.filter(item => item.name === specificPeriod);
+        } else {
+          const periodIndex = parseInt(specificPeriod, 10) - 1;
+          filteredData = filteredData.filter((_, index) => index === periodIndex);
         }
-      } else if (timeRange === 'monthly' && kpiData.monthlyData) {
-        result[kpiId].chartData = kpiData.monthlyData;
-        // Filter to specific month if needed
-        if (timeValue) {
-          const monthData = kpiData.monthlyData.find(d => d.name === `Month ${timeValue}`);
-          if (monthData) {
-            result[kpiId].current = monthData.value;
-            result[kpiId].target = monthData.target;
-            result[kpiId].progress = Math.round((monthData.value / monthData.target) * 100);
-          }
-        }
-      } else if (timeRange === 'quarterly' && kpiData.quarterlyData) {
-        result[kpiId].chartData = kpiData.quarterlyData;
-        // Filter to specific quarter if needed
-        if (timeValue) {
-          const quarterData = kpiData.quarterlyData.find(d => d.name === `Q${timeValue}`);
-          if (quarterData) {
-            result[kpiId].current = quarterData.value;
-            result[kpiId].target = quarterData.target;
-            result[kpiId].progress = Math.round((quarterData.value / quarterData.target) * 100);
-          }
-        }
-      } else if (timeRange === 'yearly' && kpiData.yearlyData) {
-        result[kpiId].chartData = kpiData.yearlyData;
-        // Filter to specific year if needed
-        if (timeValue) {
-          const yearData = kpiData.yearlyData.find(d => d.name === `${timeValue}`);
-          if (yearData) {
-            result[kpiId].current = yearData.value;
-            result[kpiId].target = yearData.target;
-            result[kpiId].progress = Math.round((yearData.value / yearData.target) * 100);
+      }
+      
+      // Use the filtered data for the chart
+      processedData[kpiId] = {
+        ...kpiData,
+        chartData: filteredData
+      };
+      
+      // Update current value based on filtered data if available
+      if (filteredData.length > 0) {
+        processedData[kpiId].current = filteredData[0].value;
+        processedData[kpiId].target = filteredData[0].target;
+        
+        // Recalculate progress
+        if (processedData[kpiId].target) {
+          processedData[kpiId].progress = Math.round((processedData[kpiId].current / processedData[kpiId].target) * 100);
+          
+          // Update status based on progress
+          if (processedData[kpiId].progress >= 100) {
+            processedData[kpiId].status = 'positive';
+          } else if (processedData[kpiId].progress >= 80) {
+            processedData[kpiId].status = 'neutral';
+          } else {
+            processedData[kpiId].status = 'negative';
           }
         }
       }
     });
-    return result;
-  }, [data, timeRange, timeValue]);
-  
-  // Reset time value when time range changes
-  useEffect(() => {
-    const options = getTimePeriodOptions();
-    if (options.length > 0) {
-      setTimeValue(options[0].value);
-    }
-  }, [timeRange]);
-  
-  const handleAccordionChange = (sectionId) => (event, isExpanded) => {
-    setExpanded(prev => 
-      isExpanded 
-        ? [...prev, sectionId] 
-        : prev.filter(id => id !== sectionId)
-    );
+    
+    return processedData;
   };
-  
-  const handleTimeRangeChange = (event, newTimeRange) => {
-    if (newTimeRange !== null) {
-      setTimeRange(newTimeRange);
-    }
-  };
-  
-  const handleTimeValueChange = (event) => {
-    setTimeValue(event.target.value);
-  };
-  
-  // Get table rows from adapter
-  const tableRows = domainAdapter.getTableRows ? domainAdapter.getTableRows(processedData) : [];
-  const tableHeaders = domainAdapter.tableHeaders || [];
   
   // Handle opening the goal setting dialog
   const handleOpenGoalDialog = (kpiId) => {
@@ -281,6 +270,47 @@ const TemplateDashboard = ({
     }
   };
   
+  // Handle accordion toggle
+  const handleAccordionChange = (sectionId) => (event, isExpanded) => {
+    setExpanded(prev => 
+      isExpanded 
+        ? [...prev, sectionId] 
+        : prev.filter(id => id !== sectionId)
+    );
+  };
+  
+  // Process the data based on time period
+  const processedData = processData(data);
+  
+  // Render a chart based on its type
+  const renderChart = (chart, data, adapter) => {
+    if (!data) return null;
+    
+    const chartType = chart.type.toLowerCase();
+    
+    // Add a Set Goal button to each chart
+    const chartComponent = (
+      <Box sx={{ position: 'relative' }}>
+        {chartType === 'card' && <CardComponent metric={chart} data={data} adapter={adapter} />}
+        {chartType === 'barchart' && <BarChartCard metric={chart} data={data} adapter={adapter} />}
+        {chartType === 'linechart' && <LineChartCard metric={chart} data={data} adapter={adapter} />}
+        {chartType === 'piechart' && <PieChartCard metric={chart} data={data} adapter={adapter} />}
+        
+        <Button
+          variant="outlined"
+          size="small"
+          startIcon={<EditIcon />}
+          onClick={() => handleOpenGoalDialog(chart.id)}
+          sx={{ position: 'absolute', top: 10, right: 10 }}
+        >
+          {data.target !== null ? 'Edit Goal' : 'Set Goal'}
+        </Button>
+      </Box>
+    );
+    
+    return chartComponent;
+  };
+  
   return (
     <>
       <Box sx={{ flexGrow: 1, p: 3 }}>
@@ -306,10 +336,10 @@ const TemplateDashboard = ({
             <Typography variant="subtitle1" sx={{ minWidth: 120 }}>Time Period:</Typography>
             
             <ToggleButtonGroup
-              value={timeRange}
+              value={timePeriod}
               exclusive
-              onChange={handleTimeRangeChange}
-              aria-label="time range"
+              onChange={handleTimePeriodChange}
+              aria-label="time period"
               size="small"
             >
               <ToggleButton value="weekly" aria-label="weekly">
@@ -327,13 +357,13 @@ const TemplateDashboard = ({
             </ToggleButtonGroup>
             
             <FormControl sx={{ minWidth: 120 }} size="small">
-              <InputLabel id="time-period-select-label">Period</InputLabel>
+              <InputLabel id="specific-period-label">Period</InputLabel>
               <Select
-                labelId="time-period-select-label"
-                id="time-period-select"
-                value={timeValue}
+                labelId="specific-period-label"
+                id="specific-period"
+                value={specificPeriod}
                 label="Period"
-                onChange={handleTimeValueChange}
+                onChange={handleSpecificPeriodChange}
               >
                 {getTimePeriodOptions().map(option => (
                   <MenuItem key={option.value} value={option.value}>
@@ -356,7 +386,7 @@ const TemplateDashboard = ({
           }}
         >
           <Typography variant="h5" gutterBottom sx={{ fontWeight: 'bold', color: '#1976d2' }}>
-            {domainAdapter.getPrimaryMetricName(timeRange, processedData[domainAdapter.getPrimaryMetric().id])}
+            {domainAdapter.getPrimaryMetricName(timePeriod, processedData[domainAdapter.getPrimaryMetric().id])}
           </Typography>
           
           <Grid container spacing={3}>
@@ -412,66 +442,48 @@ const TemplateDashboard = ({
         </Paper>
         
         {/* KPI Summary Table */}
-        {tableRows.length > 0 && (
-          <Box sx={{ mb: 4 }}>
-            <Typography variant="h5" sx={{ mb: 2 }}>
-              Summary
-            </Typography>
-            <TableContainer component={Paper} elevation={2}>
-              <Table aria-label="summary table" size="small">
-                <TableHead>
-                  <TableRow>
-                    {tableHeaders.map((header, index) => (
-                      <TableCell 
-                        key={index}
-                        align={header.align || 'left'}
-                        sx={{ 
-                          fontWeight: 'bold',
-                          backgroundColor: 'primary.light',
-                          color: 'primary.contrastText'
-                        }}
-                      >
-                        {header.label}
+        <Box sx={{ mb: 4 }}>
+          <Typography variant="h6" gutterBottom>
+            KPI Summary
+          </Typography>
+          <TableContainer component={Paper}>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  {domainAdapter.tableHeaders.map((header, index) => (
+                    <TableCell key={index}>{header.label}</TableCell>
+                  ))}
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {domainAdapter.getTableRows(processedData).map((row, rowIndex) => (
+                  <TableRow key={rowIndex}>
+                    {row.map((cell, cellIndex) => (
+                      <TableCell key={cellIndex}>
+                        {domainAdapter.formatTableCell(
+                          cell.value, 
+                          domainAdapter.tableHeaders[cellIndex].type,
+                          cell.metadata
+                        )}
                       </TableCell>
                     ))}
                   </TableRow>
-                </TableHead>
-                <TableBody>
-                  {tableRows.map((row, rowIndex) => (
-                    <TableRow key={rowIndex}>
-                      {tableHeaders.map((header, cellIndex) => (
-                        <TableCell 
-                          key={cellIndex}
-                          align={header.align || 'left'}
-                        >
-                          {domainAdapter.formatTableCell(
-                            row[header.id], 
-                            header.format, 
-                            row.formatInfo
-                          )}
-                        </TableCell>
-                      ))}
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </Box>
-        )}
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </Box>
         
         {/* Render each section as an accordion */}
         {sections.map(section => {
           const sectionCharts = domainAdapter.getChartsForSection(section.id);
           
-          // Skip rendering if no charts in this section
-          if (!sectionCharts || sectionCharts.length === 0) return null;
-          
-          const isExpanded = expanded.includes(section.id);
+          if (sectionCharts.length === 0) return null;
           
           return (
             <Accordion 
-              key={section.id} 
-              expanded={isExpanded}
+              key={section.id}
+              expanded={expanded.includes(section.id)}
               onChange={handleAccordionChange(section.id)}
               sx={{ 
                 mb: 2,
@@ -551,91 +563,8 @@ const TemplateDashboard = ({
   );
 };
 
-// Render the primary metric
-const renderPrimaryMetric = (adapter, data) => {
-  const primaryMetric = adapter.getPrimaryMetric();
-  if (!primaryMetric) return null;
-  
-  const metricData = data[primaryMetric.id];
-  if (!metricData) return null;
-  
-  return (
-    <Box sx={{ mb: 4 }}>
-      <Card elevation={3}>
-        <CardContent>
-          <Typography variant="h6" color="text.secondary" gutterBottom>
-            {primaryMetric.name}
-          </Typography>
-          <Typography variant="h3" component="div" sx={{ mb: 1 }}>
-            {adapter.formatValue(primaryMetric.id, metricData.current)}
-          </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-            Target: {adapter.formatValue(primaryMetric.id, metricData.target)}
-          </Typography>
-          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            <Box sx={{ width: '100%', mr: 1 }}>
-              <LinearProgress 
-                variant="determinate" 
-                value={metricData.progress} 
-                color={metricData.status === 'positive' ? 'success' : metricData.status === 'negative' ? 'error' : 'primary'}
-                sx={{ height: 10, borderRadius: 5 }}
-              />
-            </Box>
-            <Box sx={{ minWidth: 35 }}>
-              <Typography variant="body2" color="text.secondary">{`${Math.round(metricData.progress)}%`}</Typography>
-            </Box>
-          </Box>
-        </CardContent>
-      </Card>
-    </Box>
-  );
-};
-
-// Helper function to render the appropriate chart component
-const renderChart = (chart, data, adapter) => {
-  if (!data) {
-    console.warn(`No data found for chart: ${chart.id} - ${chart.name}`);
-    return (
-      <Card elevation={2} sx={{ height: '100%', minHeight: 250 }}>
-        <CardContent>
-          <Typography variant="h6" color="text.secondary" gutterBottom>
-            {chart.name}
-          </Typography>
-          <Typography variant="body2" color="error">
-            No data available
-          </Typography>
-        </CardContent>
-      </Card>
-    );
-  }
-  
-  const chartType = chart.type.toLowerCase();
-  
-  // Add a Set Goal button to each chart
-  const chartComponent = (
-    <Box sx={{ position: 'relative' }}>
-      {chartType === 'card' && <MetricCard metric={chart} data={data} adapter={adapter} />}
-      {chartType === 'barchart' && <BarChartCard metric={chart} data={data} adapter={adapter} />}
-      {chartType === 'linechart' && <LineChartCard metric={chart} data={data} adapter={adapter} />}
-      {chartType === 'piechart' && <PieChartCard metric={chart} data={data} adapter={adapter} />}
-      
-      <Button
-        variant="outlined"
-        size="small"
-        startIcon={<EditIcon />}
-        onClick={() => handleOpenGoalDialog(chart.id)}
-        sx={{ position: 'absolute', top: 10, right: 10 }}
-      >
-        {data.target !== null ? 'Edit Goal' : 'Set Goal'}
-      </Button>
-    </Box>
-  );
-  
-  return chartComponent;
-};
-
-// Metric Card Component
-const MetricCard = ({ metric, data, adapter }) => {
+// Card Component
+const CardComponent = ({ metric, data, adapter }) => {
   // Format the progress value safely
   const formatProgress = (progress, target) => {
     if (progress === null || target === null) {
@@ -691,7 +620,15 @@ const BarChartCard = ({ metric, data, adapter }) => {
         </Typography>
         <Box sx={{ height: 200, mt: 2 }}>
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={data.chartData}>
+            <BarChart
+              data={data.chartData}
+              margin={{
+                top: 5,
+                right: 30,
+                left: 20,
+                bottom: 5,
+              }}
+            >
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="name" />
               <YAxis />
@@ -723,7 +660,15 @@ const LineChartCard = ({ metric, data, adapter }) => {
         </Typography>
         <Box sx={{ height: 200, mt: 2 }}>
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={data.chartData}>
+            <LineChart
+              data={data.chartData}
+              margin={{
+                top: 5,
+                right: 30,
+                left: 20,
+                bottom: 5,
+              }}
+            >
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="name" />
               <YAxis />
