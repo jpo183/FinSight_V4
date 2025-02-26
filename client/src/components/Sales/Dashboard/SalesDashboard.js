@@ -375,6 +375,73 @@ const SalesDashboard = () => {
     }
   };
 
+  // Get chart data based on the selected time range
+  const getChartData = () => {
+    if (!salesData) return [];
+    
+    if (timeRangeView === 'annual') {
+      // Return monthly data for the whole year
+      return salesData.monthlyData;
+    } else if (timeRangeView === 'quarterly') {
+      // Filter monthly data for the selected quarter
+      const quarterMonths = {
+        'Q1': ['January', 'February', 'March'],
+        'Q2': ['April', 'May', 'June'],
+        'Q3': ['July', 'August', 'September'],
+        'Q4': ['October', 'November', 'December']
+      };
+      
+      return salesData.monthlyData.filter(item => 
+        quarterMonths[selectedPeriod.quarter].includes(item.month)
+      );
+    } else if (timeRangeView === 'monthly') {
+      // Return weekly data for the selected month
+      // This would normally come from your API, but we'll mock it here
+      const weeklyData = [
+        { week: 'Week 1', sales: 42000, target: 45000 },
+        { week: 'Week 2', sales: 45000, target: 45000 },
+        { week: 'Week 3', sales: 46000, target: 45000 },
+        { week: 'Week 4', sales: 47000, target: 45000 }
+      ];
+      
+      // In a real implementation, you would fetch this data from your API
+      // based on the selected month
+      return weeklyData;
+    }
+    
+    return [];
+  };
+  
+  // Get the appropriate X-axis key based on time range
+  const getXAxisDataKey = () => {
+    if (timeRangeView === 'monthly') {
+      return 'week';
+    }
+    return 'month';
+  };
+  
+  // Get chart title based on selected time range
+  const getChartTitle = () => {
+    if (timeRangeView === 'annual') {
+      return 'Monthly Sales Performance';
+    } else if (timeRangeView === 'quarterly') {
+      return `${selectedPeriod.quarter} Sales Performance`;
+    } else {
+      return `${selectedPeriod.month} Weekly Sales Performance`;
+    }
+  };
+  
+  // Get trend chart title based on selected time range
+  const getTrendChartTitle = () => {
+    if (timeRangeView === 'annual') {
+      return 'YTD Sales Trend';
+    } else if (timeRangeView === 'quarterly') {
+      return `${selectedPeriod.quarter} Cumulative Sales`;
+    } else {
+      return `${selectedPeriod.month} Cumulative Weekly Sales`;
+    }
+  };
+
   if (loading) {
     return (
       <>
@@ -959,55 +1026,55 @@ const SalesDashboard = () => {
           </AccordionSummary>
           <AccordionDetails>
             <Grid container spacing={3}>
-              {/* Monthly Sales Chart */}
+              {/* Sales Performance Chart */}
               <Grid item xs={12}>
                 <Paper sx={{ p: 3 }}>
                   <Typography variant="h6" gutterBottom>
-                    Monthly Sales Performance
+                    {getChartTitle()}
                   </Typography>
                   <ResponsiveContainer width="100%" height={300}>
                     <BarChart
-                      data={salesData.monthlyData}
+                      data={getChartData()}
                       margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
                     >
                       <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="month" />
+                      <XAxis dataKey={getXAxisDataKey()} />
                       <YAxis />
                       <RechartsTooltip formatter={(value) => formatCurrency(value)} />
                       <Legend />
                       <Bar dataKey="sales" name="Sales" fill="#8884d8" />
-                      <Bar dataKey="target" name="Monthly Target" fill="#82ca9d" />
+                      <Bar dataKey="target" name="Target" fill="#82ca9d" />
                     </BarChart>
                   </ResponsiveContainer>
                 </Paper>
               </Grid>
               
-              {/* YTD Trend Chart */}
+              {/* Trend Chart */}
               <Grid item xs={12}>
                 <Paper sx={{ p: 3 }}>
                   <Typography variant="h6" gutterBottom>
-                    YTD Sales Trend
+                    {getTrendChartTitle()}
                   </Typography>
                   <ResponsiveContainer width="100%" height={300}>
                     <LineChart
-                      data={salesData.monthlyData}
+                      data={getChartData()}
                       margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
                     >
                       <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="month" />
+                      <XAxis dataKey={getXAxisDataKey()} />
                       <YAxis />
                       <RechartsTooltip formatter={(value) => formatCurrency(value)} />
                       <Legend />
                       <Line 
                         type="monotone" 
-                        dataKey="cumulativeSales" 
+                        dataKey={timeRangeView === 'monthly' ? 'sales' : 'cumulativeSales'} 
                         name="Cumulative Sales" 
                         stroke="#8884d8" 
                         activeDot={{ r: 8 }} 
                       />
                       <Line 
                         type="monotone" 
-                        dataKey="cumulativeTarget" 
+                        dataKey={timeRangeView === 'monthly' ? 'target' : 'cumulativeTarget'} 
                         name="Cumulative Target" 
                         stroke="#82ca9d" 
                       />
