@@ -393,13 +393,18 @@ const createDynamicAdapter = (domain, kpiConfigs) => {
     },
     
     // Get charts for a specific section
-    getChartsForSection: (sectionId) => {
+    getChartsForSection: (sectionId, kpiId) => {
       const sectionKpis = kpisBySection[sectionId] || [];
+      
+      // If kpiId is provided, filter to just that KPI
+      const kpisToProcess = kpiId 
+        ? sectionKpis.filter(kpi => kpi.id === kpiId)
+        : sectionKpis;
       
       // Create a map to track which KPIs we've already processed
       const processedKpis = new Map();
       
-      return sectionKpis
+      return kpisToProcess
         .filter(kpi => {
           // Skip KPIs with no visualization type
           if (!kpi.visualizationType) return false;
