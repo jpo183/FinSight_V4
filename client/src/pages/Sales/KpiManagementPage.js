@@ -6,13 +6,10 @@ import {
   Tabs, 
   Tab, 
   Paper,
-  Button,
-  Breadcrumbs
+  Button
 } from '@mui/material';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import HomeIcon from '@mui/icons-material/Home';
-import DashboardIcon from '@mui/icons-material/Dashboard';
 
 // Import our KPI management components
 import GoalSettingForm from '../../components/kpi/goals/GoalSettingForm';
@@ -21,6 +18,7 @@ import kpiService from '../../services/kpi/kpiService';
 
 const KpiManagementPage = () => {
   const [tabValue, setTabValue] = useState(0);
+  const navigate = useNavigate();
   
   // Mock data for initial testing
   const kpiDefinitions = [
@@ -53,63 +51,18 @@ const KpiManagementPage = () => {
   return (
     <Container maxWidth="lg">
       <Box sx={{ my: 4 }}>
-        {/* Navigation breadcrumbs */}
-        <Breadcrumbs aria-label="breadcrumb" sx={{ mb: 3 }}>
-          <Link 
-            to="/" 
-            style={{ 
-              display: 'flex', 
-              alignItems: 'center',
-              color: 'inherit',
-              textDecoration: 'none'
-            }}
+        <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
+          <Button 
+            onClick={() => navigate('/sales/dashboard')}
+            startIcon={<ArrowBackIcon />}
+            sx={{ mr: 2 }}
           >
-            <HomeIcon sx={{ mr: 0.5 }} fontSize="inherit" />
-            Home
-          </Link>
-          <Link
-            to="/sales/dashboard"
-            style={{ 
-              display: 'flex', 
-              alignItems: 'center',
-              color: 'inherit',
-              textDecoration: 'none'
-            }}
-          >
-            <DashboardIcon sx={{ mr: 0.5 }} fontSize="inherit" />
-            Sales Dashboard
-          </Link>
-          <Typography
-            sx={{ display: 'flex', alignItems: 'center' }}
-            color="text.primary"
-          >
-            KPI Management
+            Back to Dashboard
+          </Button>
+          <Typography variant="h4" component="h1">
+            Sales KPI Management
           </Typography>
-        </Breadcrumbs>
-        
-        {/* Navigation buttons */}
-        <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
-          <Button 
-            component={Link} 
-            to="/"
-            variant="outlined"
-            startIcon={<HomeIcon />}
-          >
-            Main Menu
-          </Button>
-          <Button 
-            component={Link} 
-            to="/sales/dashboard" 
-            variant="contained"
-            startIcon={<DashboardIcon />}
-          >
-            Sales Dashboard
-          </Button>
         </Box>
-        
-        <Typography variant="h4" component="h1" sx={{ mb: 3 }}>
-          Sales KPI Management
-        </Typography>
         
         <Paper sx={{ mb: 3 }}>
           <Tabs 
