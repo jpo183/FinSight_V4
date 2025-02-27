@@ -47,7 +47,7 @@ const Navbar = () => {
             <MenuItem onClick={() => navigateToSalesPage('/sales')}>Sales Home</MenuItem>
             <MenuItem onClick={() => navigateToSalesPage('/sales/dashboard')}>Sales Dashboard</MenuItem>
             <MenuItem onClick={() => navigateToSalesPage('/sales/analytics')}>Sales Analytics</MenuItem>
-            <MenuItem onClick={() => navigateToSalesPage('/sales/kpi/manage')}>Manage KPIs</MenuItem>
+            <MenuItem onClick={() => navigateToSalesPage('/sales/kpi-management')}>Manage KPIs</MenuItem>
           </Menu>
           
           <Button color="inherit" onClick={() => navigate('/config')}>
