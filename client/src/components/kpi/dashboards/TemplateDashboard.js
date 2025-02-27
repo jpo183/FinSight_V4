@@ -11,6 +11,9 @@ import EditIcon from '@mui/icons-material/Edit';
 import CalendarViewMonthIcon from '@mui/icons-material/CalendarViewMonth';
 import DateRangeIcon from '@mui/icons-material/DateRange';
 import EventIcon from '@mui/icons-material/Event';
+import TrendingUpIcon from '@mui/icons-material/TrendingUp';
+import TrendingDownIcon from '@mui/icons-material/TrendingDown';
+import TrendingFlatIcon from '@mui/icons-material/TrendingFlat';
 import {
   BarChart,
   Bar,
@@ -498,29 +501,26 @@ const TemplateDashboard = ({
                     <TableRow key={index} hover>
                       {domainAdapter.tableHeaders.map((header) => {
                         if (header.id === 'status') {
-                          // Render status as a colored indicator
+                          // Render status as a trend icon
                           const status = row[header.id] || 'neutral';
                           const statusColors = {
                             positive: 'success.main',
                             negative: 'error.main',
                             neutral: 'info.main'
                           };
-                          const statusText = {
-                            positive: 'On Track',
-                            negative: 'At Risk',
-                            neutral: 'Neutral'
+                          const statusIcons = {
+                            positive: <TrendingUpIcon />,
+                            negative: <TrendingDownIcon />,
+                            neutral: <TrendingFlatIcon />
                           };
                           return (
-                            <TableCell key={header.id} align={header.align || 'left'}>
+                            <TableCell key={header.id} align={header.align || 'center'}>
                               <Box sx={{ 
-                                display: 'inline-block', 
-                                bgcolor: statusColors[status], 
-                                color: 'white',
-                                px: 1,
-                                py: 0.5,
-                                borderRadius: 1
+                                display: 'flex',
+                                justifyContent: 'center',
+                                color: statusColors[status]
                               }}>
-                                {statusText[status]}
+                                {statusIcons[status]}
                               </Box>
                             </TableCell>
                           );
@@ -585,34 +585,47 @@ const TemplateDashboard = ({
       </Box>
       
       {/* Dashboard Sections */}
-      {sections.map(section => (
-        <Accordion 
-          key={section.id}
-          expanded={expanded.includes(section.id)}
-          onChange={() => handleToggleSection(section.id)}
-          sx={{ mb: 2 }}
-        >
-          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-            <Typography variant="h6">{section.name}</Typography>
-          </AccordionSummary>
-          <AccordionDetails>
-            <Grid container spacing={3}>
-              {section.kpis.map(kpi => {
-                const kpiData = processedData[kpi.id];
-                if (!kpiData) return null;
-                
-                // Get charts for this KPI
-                const charts = domainAdapter.getChartsForSection(section.id, kpi.id);
-                
-                return charts.map((chart, index) => (
-                  <Grid item xs={12} md={6} lg={4} key={`${kpi.id}-${index}`}>
-                    {renderChart(chart, kpiData, domainAdapter)}
-                  </Grid>
-                ));
-              })}
-            </Grid>
-          </AccordionDetails>
-        </Accordion>
+      {sections.map((section, index) => (
+        <React.Fragment key={section.id}>
+          {index > 0 && <Divider sx={{ my: 3 }} />}
+          <Accordion 
+            expanded={expanded.includes(section.id)}
+            onChange={() => handleToggleSection(section.id)}
+            sx={{ 
+              mb: 2,
+              bgcolor: index % 2 === 0 ? 'background.paper' : 'background.default',
+              '&:before': { display: 'none' } // Remove the default divider
+            }}
+          >
+            <AccordionSummary 
+              expandIcon={<ExpandMoreIcon />}
+              sx={{ 
+                borderLeft: 4, 
+                borderColor: 'primary.main',
+                pl: 2
+              }}
+            >
+              <Typography variant="h6">{section.name}</Typography>
+            </AccordionSummary>
+            <AccordionDetails>
+              <Grid container spacing={3}>
+                {section.kpis.map(kpi => {
+                  const kpiData = processedData[kpi.id];
+                  if (!kpiData) return null;
+                  
+                  // Get charts for this KPI
+                  const charts = domainAdapter.getChartsForSection(section.id, kpi.id);
+                  
+                  return charts.map((chart, index) => (
+                    <Grid item xs={12} md={6} lg={4} key={`${kpi.id}-${index}`}>
+                      {renderChart(chart, kpiData, domainAdapter)}
+                    </Grid>
+                  ));
+                })}
+              </Grid>
+            </AccordionDetails>
+          </Accordion>
+        </React.Fragment>
       ))}
       
       {/* Goal Setting Dialog */}
