@@ -456,7 +456,7 @@ const formatSectionName = (sectionId) => {
     'revenue': 'Revenue Metrics',
     'pipeline': 'Pipeline Metrics',
     'activity': 'Activity Metrics',
-    'customer': 'Customer Metrics',
+    'customers': 'Customer Metrics',
     'performance': 'Performance Charts'
   };
   
