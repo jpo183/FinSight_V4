@@ -360,15 +360,6 @@ const TemplateDashboard = ({
             <Typography variant="body1" color="text.secondary">
               No data available for the selected time period.
             </Typography>
-            <Button
-              variant="outlined"
-              size="small"
-              startIcon={<EditIcon />}
-              onClick={() => handleOpenGoalDialog(chart.id)}
-              sx={{ mt: 2 }}
-            >
-              {data.target !== null ? 'Edit Goal' : 'Set Goal'}
-            </Button>
           </CardContent>
         </Card>
       );
@@ -383,16 +374,6 @@ const TemplateDashboard = ({
         {chartType === 'barchart' && <BarChartCard metric={chart} data={data} adapter={adapter} />}
         {chartType === 'linechart' && <LineChartCard metric={chart} data={data} adapter={adapter} />}
         {chartType === 'piechart' && <PieChartCard metric={chart} data={data} adapter={adapter} />}
-        
-        <Button
-          variant="outlined"
-          size="small"
-          startIcon={<EditIcon />}
-          onClick={() => handleOpenGoalDialog(chart.id)}
-          sx={{ position: 'absolute', top: 10, right: 10 }}
-        >
-          {data.target !== null ? 'Edit Goal' : 'Set Goal'}
-        </Button>
       </Box>
     );
     
