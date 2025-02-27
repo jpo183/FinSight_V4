@@ -62,82 +62,64 @@ const SalesDashboard = () => {
         const goals = storedGoals ? JSON.parse(storedGoals) : [];
         console.log('Goals loaded:', goals);
         
-        // Generate predictable test data for each KPI
-        const mockData = {};
-        kpiConfigs.forEach((kpi, index) => {
-          // Use the KPI ID to generate predictable values
-          const kpiId = kpi.id;
-          const baseValue = 100000 + (index * 10000); // Increases by 10k for each KPI
-          
-          // Find goal for this KPI if it exists
-          const kpiGoal = goals.find(goal => goal.kpi_id === kpiId);
-          const baseTarget = kpiGoal ? parseFloat(kpiGoal.target_value) : null;
-          const progress = baseTarget ? Math.round((baseValue / baseTarget) * 100) : null;
-          
-          // Generate weekly data (last 12 weeks)
-          const weeklyData = Array(12).fill().map((_, i) => {
-            // Weekly values with some variation
-            const weekFactor = 0.8 + (Math.sin(i / 6 * Math.PI) * 0.3); // Creates a wave pattern
-            const value = Math.floor((baseValue / 52) * weekFactor * 4); // 4 weeks worth of value
-            return {
-              name: `Week ${i+1}`,
-              value: value,
-              target: baseTarget ? Math.floor((baseTarget / 52) * weekFactor * 4) : null
-            };
-          });
-          
-          // Generate monthly data (12 months)
-          const monthlyData = Array(12).fill().map((_, i) => {
-            // Monthly values with seasonal variation
-            const monthFactor = 0.7 + (Math.sin((i / 11) * Math.PI) * 0.4); // Creates a seasonal pattern
-            const value = Math.floor((baseValue / 12) * monthFactor);
-            return {
-              name: `Month ${i+1}`,
-              value: value,
-              target: baseTarget ? Math.floor((baseTarget / 12) * monthFactor) : null
-            };
-          });
-          
-          // Generate quarterly data (4 quarters)
-          const quarterlyData = Array(4).fill().map((_, i) => {
-            // Quarterly values with some variation
-            const quarterFactor = 0.9 + (Math.sin(i / 2 * Math.PI) * 0.2); // Creates a wave pattern
-            const value = Math.floor((baseValue / 4) * quarterFactor);
-            return {
-              name: `Q${i+1}`,
-              value: value,
-              target: baseTarget ? Math.floor((baseTarget / 4) * quarterFactor) : null
-            };
-          });
-          
-          // Generate yearly data (3 years)
-          const yearlyData = Array(3).fill().map((_, i) => {
-            // Yearly values with growth trend
-            const yearFactor = 0.8 + (i * 0.1); // Each year grows by 10%
-            const value = Math.floor(baseValue * yearFactor);
-            return {
-              name: `${new Date().getFullYear() - 2 + i}`,
-              value: value,
-              target: baseTarget ? Math.floor(baseTarget * yearFactor) : null
-            };
-          });
-          
-          mockData[kpiId] = {
-            current: baseValue,
-            target: baseTarget,
-            progress: progress,
-            status: progress ? (progress >= 100 ? 'positive' : progress >= 80 ? 'neutral' : 'negative') : 'neutral',
-            chartData: monthlyData, // Default to monthly data
-            weeklyData: weeklyData,
-            monthlyData: monthlyData,
-            quarterlyData: quarterlyData,
-            yearlyData: yearlyData,
-            // Add a flag to indicate this is test data
-            isTestData: true
-          };
-        });
+        // Initialize empty data structure
+        const dashboardData = {};
         
-        console.log('Generated test data:', mockData);
+        // Fetch real data for each KPI
+        for (const kpi of kpiConfigs) {
+          try {
+            // Use the salesDataService to fetch real data
+            const kpiData = await salesService.getSalesData(kpi.id, 'monthly');
+            
+            // Find goal for this KPI if it exists
+            const kpiGoal = goals.find(goal => goal.kpi_id === kpi.id && goal.status === 'active');
+            const targetValue = kpiGoal ? parseFloat(kpiGoal.target_value) : null;
+            
+            // Calculate current value from the data
+            const currentValue = kpiData.data.length > 0 ? 
+              kpiData.data.reduce((sum, item) => sum + (item.value || 0), 0) : 0;
+            
+            // Calculate progress
+            const progress = targetValue && targetValue > 0 ? 
+              Math.round((currentValue / targetValue) * 100) : null;
+            
+            // Determine status based on progress
+            let status = 'neutral';
+            if (progress !== null) {
+              status = progress >= 100 ? 'positive' : 
+                      progress >= 80 ? 'neutral' : 'negative';
+            }
+            
+            // Structure the data for the dashboard
+            dashboardData[kpi.id] = {
+              current: currentValue,
+              target: targetValue,
+              progress: progress,
+              status: status,
+              chartData: kpiData.data || [],
+              weeklyData: [], // Will be populated when needed
+              monthlyData: kpiData.data || [],
+              quarterlyData: [], // Will be populated when needed
+              yearlyData: [] // Will be populated when needed
+            };
+          } catch (kpiError) {
+            console.error(`Error fetching data for KPI ${kpi.id}:`, kpiError);
+            // Add empty data structure for this KPI
+            dashboardData[kpi.id] = {
+              current: 0,
+              target: null,
+              progress: null,
+              status: 'neutral',
+              chartData: [],
+              weeklyData: [],
+              monthlyData: [],
+              quarterlyData: [],
+              yearlyData: []
+            };
+          }
+        }
+        
+        console.log('Fetched dashboard data:', dashboardData);
         
         // Create dynamic adapter
         console.log('Creating dynamic adapter...');
@@ -145,7 +127,7 @@ const SalesDashboard = () => {
         console.log('Dynamic Adapter:', dynamicAdapter);
         
         setAdapter(dynamicAdapter);
-        setData(mockData);
+        setData(dashboardData);
         console.log('Dashboard state updated');
       } catch (error) {
         console.error('Error initializing dashboard:', error);
