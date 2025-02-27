@@ -42,6 +42,10 @@ const TemplateDashboard = ({
   const sections = domainAdapter.getSections();
   console.log('Sections to render:', sections);
   
+  // Get primary metric
+  const primaryMetric = domainAdapter.getPrimaryMetric();
+  console.log('Primary metric:', primaryMetric);
+  
   // State to track expanded sections (default all expanded)
   const [expanded, setExpanded] = useState(sections.map(s => s.id));
   
@@ -328,6 +332,12 @@ const TemplateDashboard = ({
   // Process the data based on selected time period
   const processedData = processData(data);
   
+  // Get primary metric data
+  const primaryMetricData = primaryMetric && processedData[primaryMetric.id];
+  
+  // Get table rows from adapter
+  const tableRows = domainAdapter.getTableRows(processedData);
+  
   // Render a chart based on its type
   const renderChart = (chart, data, adapter) => {
     if (!data) {
@@ -401,7 +411,7 @@ const TemplateDashboard = ({
     );
   }
   
-  // Render the dashboard UI (moved outside of try/catch)
+  // Render the dashboard UI
   return (
     <Box sx={{ p: 3 }}>
       {/* Dashboard Header */}
@@ -415,6 +425,121 @@ const TemplateDashboard = ({
             <Typography variant="body1">
               This dashboard is displaying test data. In a production environment, this would be replaced with real data from your systems.
             </Typography>
+          </Paper>
+        )}
+        
+        {/* Primary Metric Card - NEW COMPONENT */}
+        {primaryMetric && primaryMetricData && (
+          <Paper sx={{ p: 3, mb: 3, bgcolor: 'primary.light', color: 'primary.contrastText' }}>
+            <Grid container spacing={2} alignItems="center">
+              <Grid item xs={12} md={6}>
+                <Typography variant="h6" gutterBottom>
+                  {primaryMetric.name}
+                </Typography>
+                <Typography variant="h3" component="div">
+                  {domainAdapter.formatValue(primaryMetric.id, primaryMetricData.current)}
+                </Typography>
+                <Typography variant="body1" sx={{ mt: 1 }}>
+                  Target: {primaryMetricData.target ? 
+                    domainAdapter.formatValue(primaryMetric.id, primaryMetricData.target) : 
+                    'Not set'}
+                </Typography>
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                  <Box sx={{ width: '100%', mr: 1 }}>
+                    <LinearProgress 
+                      variant="determinate" 
+                      value={primaryMetricData.progress !== null ? Math.min(primaryMetricData.progress, 100) : 0} 
+                      color="inherit"
+                      sx={{ height: 10, borderRadius: 5, bgcolor: 'rgba(255,255,255,0.3)' }}
+                    />
+                  </Box>
+                  <Box sx={{ minWidth: 50 }}>
+                    <Typography variant="h6">
+                      {primaryMetricData.progress !== null ? 
+                        `${Math.round(primaryMetricData.progress)}%` : 
+                        'N/A'}
+                    </Typography>
+                  </Box>
+                </Box>
+                <Typography variant="body2" sx={{ mt: 1 }}>
+                  {primaryMetricData.progress >= 100 ? 
+                    'Target achieved!' : 
+                    primaryMetricData.progress >= 80 ? 
+                      'On track to meet target' : 
+                      'Needs attention to meet target'}
+                </Typography>
+              </Grid>
+            </Grid>
+          </Paper>
+        )}
+        
+        {/* KPI Summary Table - NEW COMPONENT */}
+        {tableRows && tableRows.length > 0 && (
+          <Paper sx={{ width: '100%', mb: 3, overflow: 'hidden' }}>
+            <TableContainer>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    {domainAdapter.tableHeaders.map((header) => (
+                      <TableCell
+                        key={header.id}
+                        align={header.align || 'left'}
+                        sx={{ fontWeight: 'bold' }}
+                      >
+                        {header.label}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {tableRows.map((row, index) => (
+                    <TableRow key={index} hover>
+                      {domainAdapter.tableHeaders.map((header) => {
+                        if (header.id === 'status') {
+                          // Render status as a colored indicator
+                          const status = row[header.id] || 'neutral';
+                          const statusColors = {
+                            positive: 'success.main',
+                            negative: 'error.main',
+                            neutral: 'info.main'
+                          };
+                          const statusText = {
+                            positive: 'On Track',
+                            negative: 'At Risk',
+                            neutral: 'Neutral'
+                          };
+                          return (
+                            <TableCell key={header.id} align={header.align || 'left'}>
+                              <Box sx={{ 
+                                display: 'inline-block', 
+                                bgcolor: statusColors[status], 
+                                color: 'white',
+                                px: 1,
+                                py: 0.5,
+                                borderRadius: 1
+                              }}>
+                                {statusText[status]}
+                              </Box>
+                            </TableCell>
+                          );
+                        }
+                        
+                        // For other cells, format the value
+                        return (
+                          <TableCell key={header.id} align={header.align || 'left'}>
+                            {header.format ? 
+                              domainAdapter.formatTableCell(row[header.id], header.format, row) : 
+                              row[header.id]}
+                          </TableCell>
+                        );
+                      })}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
           </Paper>
         )}
         
