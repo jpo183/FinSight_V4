@@ -618,7 +618,23 @@ const TemplateDashboard = ({
                   
                   return charts.map((chart, index) => (
                     <Grid item xs={12} md={6} lg={4} key={`${kpi.id}-${index}`}>
-                      {renderChart(chart, kpiData, domainAdapter)}
+                      <Box 
+                        sx={{ 
+                          border: 1, 
+                          borderColor: 'divider',
+                          borderRadius: 2,
+                          boxShadow: 2,
+                          p: 1,
+                          height: '100%',
+                          transition: 'all 0.3s',
+                          '&:hover': {
+                            boxShadow: 4,
+                            borderColor: 'primary.main',
+                          }
+                        }}
+                      >
+                        {renderChart(chart, kpiData, domainAdapter)}
+                      </Box>
                     </Grid>
                   ));
                 })}
