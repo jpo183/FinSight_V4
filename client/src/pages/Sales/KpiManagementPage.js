@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { 
   Container, 
   Typography, 
@@ -20,6 +20,10 @@ import InputIcon from '@mui/icons-material/Input';
 
 const KpiManagementPage = () => {
   const navigate = useNavigate();
+  
+  useEffect(() => {
+    console.log('KpiManagementPage mounted');
+  }, []);
   
   const menuItems = [
     {
@@ -47,6 +51,8 @@ const KpiManagementPage = () => {
       path: '/sales/kpi-history'
     }
   ];
+
+  console.log('Rendering KpiManagementPage with menuItems:', menuItems);
 
   return (
     <>
