@@ -8,11 +8,13 @@ import Sales from './components/Sales/Sales';
 import SalesAnalytics from './components/Sales/Analytics/SalesAnalytics';
 import SalesDashboard from './components/kpi/dashboards/SalesDashboard';
 import KpiManagementPage from './pages/Sales/KpiManagementPage';
+import GoalManagementPage from './pages/Sales/GoalManagementPage';
+import KpiDefinitionsPage from './pages/Sales/KpiDefinitionsPage';
 import { Box } from '@mui/material';
-import GoalManagement from './components/kpi/goals/GoalManagement';
-import { Link } from 'react-router-dom';
-import { ListItem, ListItemIcon, ListItemText } from '@mui/material';
-import { Dashboard as DashboardIcon, Settings as SettingsIcon, BarChart as BarChartIcon, Flag as TargetIcon } from '@mui/icons-material';
+
+// We'll create these other pages later
+// import KpiValuesPage from './pages/Sales/KpiValuesPage';
+// import KpiHistoryPage from './pages/Sales/KpiHistoryPage';
 
 const AppLayout = ({ children }) => (
   <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
@@ -43,22 +45,43 @@ function App() {
             <SalesAnalytics />
           </AppLayout>
         } />
-        <Route path="/config" element={
-          <AppLayout>
-            <Config />
-          </AppLayout>
-        } />
         <Route path="/sales/dashboard" element={
           <AppLayout>
             <SalesDashboard />
           </AppLayout>
         } />
-        <Route path="/sales/kpi/manage" element={
+        <Route path="/sales/kpi-management" element={
           <AppLayout>
             <KpiManagementPage />
           </AppLayout>
         } />
-        <Route path="/kpi-management" element={<GoalManagement />} />
+        <Route path="/sales/goal-management" element={
+          <AppLayout>
+            <GoalManagementPage />
+          </AppLayout>
+        } />
+        <Route path="/sales/kpi-definitions" element={
+          <AppLayout>
+            <KpiDefinitionsPage />
+          </AppLayout>
+        } />
+        {/* We'll add these routes later
+        <Route path="/sales/kpi-values" element={
+          <AppLayout>
+            <KpiValuesPage />
+          </AppLayout>
+        } />
+        <Route path="/sales/kpi-history" element={
+          <AppLayout>
+            <KpiHistoryPage />
+          </AppLayout>
+        } />
+        */}
+        <Route path="/config" element={
+          <AppLayout>
+            <Config />
+          </AppLayout>
+        } />
       </Routes>
     </Router>
   );
