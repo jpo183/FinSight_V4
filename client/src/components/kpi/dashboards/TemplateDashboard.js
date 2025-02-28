@@ -196,105 +196,121 @@ const TemplateDashboard = ({
     
     const processedData = {};
     
+    // Load KPI values from localStorage
+    let storedKpiValues = [];
+    try {
+      const storedValues = localStorage.getItem('salesKpiValues');
+      if (storedValues) {
+        storedKpiValues = JSON.parse(storedValues);
+        console.log('Processing stored KPI values:', storedKpiValues);
+      }
+    } catch (error) {
+      console.error('Error parsing stored KPI values:', error);
+    }
+    
+    // Process each KPI
     Object.entries(data).forEach(([kpiId, kpiData]) => {
       if (!kpiData) {
         console.warn(`No data for KPI: ${kpiId}`);
         return;
       }
       
-      let filteredData = [];
-      
       try {
-        // Select the right data array based on time period
-        if (timePeriod === 'weekly' && kpiData.weeklyData) {
-          filteredData = [...kpiData.weeklyData];
-        } else if (timePeriod === 'monthly' && kpiData.monthlyData) {
-          filteredData = [...kpiData.monthlyData];
-        } else if (timePeriod === 'quarterly' && kpiData.quarterlyData) {
-          filteredData = [...kpiData.quarterlyData];
-        } else if (timePeriod === 'yearly' && kpiData.yearlyData) {
-          filteredData = [...kpiData.yearlyData];
-        } else if (kpiData.chartData) {
-          filteredData = [...kpiData.chartData];
-        }
-        
-        // Filter by specific period if selected
-        if (specificPeriod && filteredData.length > 0) {
-          if (timePeriod === 'yearly') {
-            filteredData = filteredData.filter(item => item && item.name === specificPeriod);
-          } else {
-            const periodIndex = parseInt(specificPeriod, 10) - 1;
-            if (periodIndex >= 0 && periodIndex < filteredData.length) {
-              filteredData = [filteredData[periodIndex]];
-            }
-          }
-        }
-        
-        // Filter by year if applicable
-        if (selectedYear && filteredData.length > 0) {
-          filteredData = filteredData.filter(item => 
-            item && (!item.year || item.year === selectedYear)
-          );
-        }
-        
-        // Check if we should load manual KPI values from localStorage
-        const storedValues = localStorage.getItem('salesKpiValues');
-        if (storedValues) {
-          const values = JSON.parse(storedValues);
-          const kpiValues = values.filter(v => 
-            v.kpi_id === kpiId && 
-            v.period_type === timePeriod &&
-            v.year === selectedYear
-          );
-          
-          if (kpiValues.length > 0) {
-            // Convert to chart data format
-            const chartData = kpiValues.map(v => ({
-              name: v.period_value,
-              value: parseFloat(v.value),
-              year: v.year
-            }));
-            
-            // Sort by period value
-            chartData.sort((a, b) => parseInt(a.name) - parseInt(b.name));
-            
-            filteredData = chartData;
-          }
-        }
-        
-        // Create a safe copy of the KPI data
+        // Start with a safe copy of the KPI data
         processedData[kpiId] = {
           ...kpiData,
-          chartData: filteredData,
+          chartData: [],
           current: kpiData.current || 0,
           target: kpiData.target || null,
           progress: kpiData.progress || null,
           status: kpiData.status || 'neutral'
         };
         
-        // Update current value based on filtered data if available
-        if (filteredData.length > 0 && filteredData[0]) {
-          if (filteredData[0].value !== undefined) {
-            processedData[kpiId].current = filteredData[0].value;
+        // Find manual values for this KPI
+        const kpiValues = storedKpiValues.filter(v => 
+          v.kpi_id === kpiId && 
+          v.period_type === timePeriod &&
+          v.year === selectedYear
+        );
+        
+        // If we have manual values, use them
+        if (kpiValues.length > 0) {
+          console.log(`Found ${kpiValues.length} manual values for KPI ${kpiId}`);
+          
+          // Convert to chart data format
+          const chartData = kpiValues.map(v => ({
+            name: v.period_value,
+            value: parseFloat(v.value),
+            year: v.year
+          }));
+          
+          // Sort by period value
+          chartData.sort((a, b) => parseInt(a.name) - parseInt(b.name));
+          
+          processedData[kpiId].chartData = chartData;
+          
+          // Update current value to the most recent one
+          if (chartData.length > 0) {
+            processedData[kpiId].current = chartData[chartData.length - 1].value;
           }
-          if (filteredData[0].target !== undefined) {
-            processedData[kpiId].target = filteredData[0].target;
+        } 
+        // Otherwise use the built-in data
+        else {
+          let dataSource = [];
+          
+          // Select the right data array based on time period
+          if (timePeriod === 'weekly' && kpiData.weeklyData) {
+            dataSource = [...kpiData.weeklyData];
+          } else if (timePeriod === 'monthly' && kpiData.monthlyData) {
+            dataSource = [...kpiData.monthlyData];
+          } else if (timePeriod === 'quarterly' && kpiData.quarterlyData) {
+            dataSource = [...kpiData.quarterlyData];
+          } else if (timePeriod === 'yearly' && kpiData.yearlyData) {
+            dataSource = [...kpiData.yearlyData];
+          } else if (kpiData.chartData) {
+            dataSource = [...kpiData.chartData];
           }
           
-          // Recalculate progress if we have both current and target
-          if (processedData[kpiId].current !== null && 
-              processedData[kpiId].target !== null && 
-              processedData[kpiId].target > 0) {
-            processedData[kpiId].progress = Math.round((processedData[kpiId].current / processedData[kpiId].target) * 100);
-            
-            // Update status based on progress
-            if (processedData[kpiId].progress >= 100) {
-              processedData[kpiId].status = 'positive';
-            } else if (processedData[kpiId].progress >= 80) {
-              processedData[kpiId].status = 'neutral';
+          // Filter by year if applicable
+          if (selectedYear && dataSource.length > 0) {
+            dataSource = dataSource.filter(item => 
+              item && (!item.year || item.year === selectedYear)
+            );
+          }
+          
+          // Filter by specific period if selected
+          if (specificPeriod && dataSource.length > 0) {
+            if (timePeriod === 'yearly') {
+              dataSource = dataSource.filter(item => item && item.name === specificPeriod);
             } else {
-              processedData[kpiId].status = 'negative';
+              const periodIndex = parseInt(specificPeriod, 10) - 1;
+              if (periodIndex >= 0 && periodIndex < dataSource.length) {
+                dataSource = [dataSource[periodIndex]];
+              }
             }
+          }
+          
+          processedData[kpiId].chartData = dataSource;
+        }
+        
+        // Get target from goals if available
+        if (goalsByKpi[kpiId]) {
+          processedData[kpiId].target = parseFloat(goalsByKpi[kpiId].target_value);
+        }
+        
+        // Recalculate progress if we have both current and target
+        if (processedData[kpiId].current !== null && 
+            processedData[kpiId].target !== null && 
+            processedData[kpiId].target > 0) {
+          processedData[kpiId].progress = Math.round((processedData[kpiId].current / processedData[kpiId].target) * 100);
+          
+          // Update status based on progress
+          if (processedData[kpiId].progress >= 100) {
+            processedData[kpiId].status = 'positive';
+          } else if (processedData[kpiId].progress >= 80) {
+            processedData[kpiId].status = 'neutral';
+          } else {
+            processedData[kpiId].status = 'negative';
           }
         }
       } catch (error) {
