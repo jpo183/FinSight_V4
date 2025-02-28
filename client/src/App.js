@@ -10,10 +10,10 @@ import SalesDashboard from './components/kpi/dashboards/SalesDashboard';
 import KpiManagementPage from './pages/Sales/KpiManagementPage';
 import GoalManagementPage from './pages/Sales/GoalManagementPage';
 import KpiDefinitionsPage from './pages/Sales/KpiDefinitionsPage';
+import KpiValuesPage from './components/Sales/KpiValues';
 import { Box } from '@mui/material';
 
-// We'll create these other pages later
-// import KpiValuesPage from './pages/Sales/KpiValuesPage';
+// We'll create this page later
 // import KpiHistoryPage from './pages/Sales/KpiHistoryPage';
 
 const AppLayout = ({ children }) => (
@@ -65,12 +65,12 @@ function App() {
             <KpiDefinitionsPage />
           </AppLayout>
         } />
-        {/* We'll add these routes later
         <Route path="/sales/kpi-values" element={
           <AppLayout>
             <KpiValuesPage />
           </AppLayout>
         } />
+        {/* We'll add this route later
         <Route path="/sales/kpi-history" element={
           <AppLayout>
             <KpiHistoryPage />
