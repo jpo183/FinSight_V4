@@ -949,58 +949,102 @@ const CardComponent = ({ metric, data, adapter }) => {
 
 // Bar Chart Card Component
 const BarChartCard = ({ metric, data, adapter }) => {
-  console.log('BarChartCard rendering with data:', data);
+  console.log('📊 BarChartCard rendering with data:', data);
   
-  // Format the progress value safely
-  const formatProgress = (progress) => {
-    if (progress === null || progress === undefined) {
-      return 'No target set';
+  // State to toggle between cumulative and regular view
+  const [showCumulative, setShowCumulative] = useState(true);
+  
+  // Check if we have chart data
+  if (!data.chartData || data.chartData.length === 0) {
+    console.warn('❌ No chart data available for bar chart:', metric.id);
+    return (
+      <Card elevation={2} sx={{ height: '100%' }}>
+        <CardContent>
+          <Typography variant="h6" color="text.secondary" gutterBottom>
+            {metric.name}
+          </Typography>
+          <Box sx={{ height: 300, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Typography variant="body1" color="text.secondary">
+              No data available
+            </Typography>
+          </Box>
+        </CardContent>
+      </Card>
+    );
+  }
+  
+  // Prepare data for the chart - ensure we have both value and target
+  // and calculate cumulative values
+  const chartData = data.chartData.map((item, index, array) => {
+    // Calculate cumulative value
+    let cumulativeValue = item.value;
+    if (showCumulative && index > 0) {
+      cumulativeValue = array.slice(0, index + 1).reduce((sum, curr) => sum + curr.value, 0);
     }
-    try {
-      return `${Math.round(progress)}%`;
-    } catch (error) {
-      console.error('Error formatting progress:', error);
-      return 'N/A';
+    
+    // Make sure we have a target value for each data point
+    return {
+      ...item,
+      value: item.value,
+      cumulativeValue: cumulativeValue,
+      target: data.target || null
+    };
+  });
+  
+  console.log('📊 Prepared bar chart data with cumulative values:', chartData);
+  
+  // Format period labels based on period type
+  const formatPeriodLabel = (period) => {
+    // Get period type from the data
+    const periodType = data.periodType || 'monthly';
+    console.log(`📊 Formatting period ${period} for type ${periodType}`);
+    
+    if (periodType === 'monthly') {
+      const months = [
+        'January', 'February', 'March', 'April', 'May', 'June',
+        'July', 'August', 'September', 'October', 'November', 'December'
+      ];
+      const monthIndex = parseInt(period) - 1;
+      return monthIndex >= 0 && monthIndex < months.length ? months[monthIndex] : period;
+    } else if (periodType === 'quarterly') {
+      return `Q${period}`;
+    } else if (periodType === 'yearly') {
+      return period;
+    } else if (periodType === 'weekly') {
+      return `Week ${period}`;
     }
+    return period;
   };
   
   return (
     <Card elevation={2} sx={{ height: '100%' }}>
       <CardContent>
-        <Typography variant="h6" color="text.secondary" gutterBottom>
-          {metric.name}
-        </Typography>
-        <Typography variant="h4" component="div" sx={{ mb: 1 }}>
-          {adapter.formatValue(metric.id, data.current)}
-        </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-          Target: {data.target !== null ? adapter.formatValue(metric.id, data.target) : 'Not set'}
-        </Typography>
-        <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-          <Box sx={{ width: '100%', mr: 1 }}>
-            <LinearProgress 
-              variant="determinate" 
-              value={data.progress !== null ? Math.min(data.progress, 100) : 0} 
-              color={data.status === 'positive' ? 'success' : data.status === 'negative' ? 'error' : 'primary'}
-            />
-          </Box>
-          <Box sx={{ minWidth: 35 }}>
-            <Typography variant="body2" color="text.secondary">
-              {(() => {
-                try {
-                  return formatProgress(data.progress);
-                } catch (e) {
-                  console.error('Error in formatProgress render:', e);
-                  return 'Error';
-                }
-              })()}
-            </Typography>
-          </Box>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+          <Typography variant="h6" color="text.secondary">
+            {metric.name}
+          </Typography>
+          <ToggleButtonGroup
+            size="small"
+            value={showCumulative ? 'cumulative' : 'individual'}
+            exclusive
+            onChange={(e, newValue) => {
+              if (newValue !== null) {
+                setShowCumulative(newValue === 'cumulative');
+              }
+            }}
+          >
+            <ToggleButton value="individual" aria-label="individual values">
+              Individual
+            </ToggleButton>
+            <ToggleButton value="cumulative" aria-label="cumulative values">
+              Cumulative
+            </ToggleButton>
+          </ToggleButtonGroup>
         </Box>
-        <Box sx={{ height: 200, mt: 2 }}>
+        <Box sx={{ height: 300 }}>
           <ResponsiveContainer width="100%" height="100%">
             <BarChart
-              data={data.chartData}
+              data={chartData}
               margin={{
                 top: 5,
                 right: 30,
@@ -1009,12 +1053,39 @@ const BarChartCard = ({ metric, data, adapter }) => {
               }}
             >
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="name" />
-              <YAxis />
-              <Tooltip formatter={(value) => adapter.formatValue(metric.id, value)} />
+              <XAxis 
+                dataKey="name" 
+                tickFormatter={formatPeriodLabel}
+                label={{ 
+                  value: 'Period', 
+                  position: 'insideBottomRight', 
+                  offset: -10 
+                }} 
+              />
+              <YAxis 
+                label={{ 
+                  value: metric.unit || '', 
+                  angle: -90, 
+                  position: 'insideLeft' 
+                }} 
+              />
+              <Tooltip 
+                formatter={(value) => adapter.formatValue(metric.id, value)}
+                labelFormatter={(label) => `Period: ${formatPeriodLabel(label)}`}
+              />
               <Legend />
-              <Bar dataKey="value" fill="#8884d8" name="Actual" />
-              <Bar dataKey="target" fill="#82ca9d" name="Target" />
+              <Bar 
+                dataKey={showCumulative ? "cumulativeValue" : "value"} 
+                name={showCumulative ? "Cumulative" : "Individual"} 
+                fill="#8884d8" 
+              />
+              {data.target !== null && (
+                <Bar 
+                  dataKey="target" 
+                  name="Target" 
+                  fill="#82ca9d" 
+                />
+              )}
             </BarChart>
           </ResponsiveContainer>
         </Box>
