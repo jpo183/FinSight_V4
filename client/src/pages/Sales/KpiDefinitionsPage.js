@@ -56,7 +56,9 @@ const KpiDefinitionsPage = () => {
     dashboardSection: 'revenue',
     visualizationType: 'card',
     showInTable: true,
-    isPrimaryMetric: false
+    isPrimaryMetric: false,
+    // Data source
+    source: 'manual' // Default to manual entry
   });
 
   useEffect(() => {
@@ -193,7 +195,8 @@ const KpiDefinitionsPage = () => {
       dashboardSection: 'revenue',
       visualizationType: 'card',
       showInTable: true,
-      isPrimaryMetric: false
+      isPrimaryMetric: false,
+      source: 'manual'
     });
     setEditingKpiId(null);
   };
@@ -275,6 +278,20 @@ const KpiDefinitionsPage = () => {
                     value={kpi.unit}
                     onChange={handleKpiChange}
                   />
+                  
+                  <FormControl fullWidth margin="normal">
+                    <InputLabel>Data Source</InputLabel>
+                    <Select
+                      name="source"
+                      value={kpi.source}
+                      onChange={handleKpiChange}
+                      label="Data Source"
+                    >
+                      <MenuItem value="manual">Manual Entry</MenuItem>
+                      <MenuItem value="automated">Automated (Database Query)</MenuItem>
+                    </Select>
+                    <FormHelperText>How data will be collected for this KPI</FormHelperText>
+                  </FormControl>
                   
                   <FormControl fullWidth margin="normal">
                     <InputLabel>Dashboard Section</InputLabel>
@@ -372,6 +389,7 @@ const KpiDefinitionsPage = () => {
                         <TableRow>
                           <TableCell>Name</TableCell>
                           <TableCell>Type</TableCell>
+                          <TableCell>Source</TableCell>
                           <TableCell>Section</TableCell>
                           <TableCell>Actions</TableCell>
                         </TableRow>
@@ -379,7 +397,7 @@ const KpiDefinitionsPage = () => {
                       <TableBody>
                         {kpiList.length === 0 ? (
                           <TableRow>
-                            <TableCell colSpan={4} align="center">
+                            <TableCell colSpan={5} align="center">
                               No KPIs defined yet. Create your first KPI.
                             </TableCell>
                           </TableRow>
@@ -388,6 +406,7 @@ const KpiDefinitionsPage = () => {
                             <TableRow key={kpi.id}>
                               <TableCell>{kpi.name}</TableCell>
                               <TableCell>{kpi.dataType}</TableCell>
+                              <TableCell>{kpi.source || 'manual'}</TableCell>
                               <TableCell>{kpi.dashboardSection}</TableCell>
                               <TableCell>
                                 <IconButton onClick={() => handleEditKpi(kpi.id)}>
