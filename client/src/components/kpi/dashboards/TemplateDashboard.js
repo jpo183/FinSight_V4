@@ -1019,21 +1019,60 @@ const LineChartCard = ({ metric, data, adapter }) => {
     );
   }
   
+  // State to toggle between cumulative and regular view
+  const [showCumulative, setShowCumulative] = useState(true);
+  
   // Prepare data for the chart - ensure we have both value and target
-  const chartData = data.chartData.map(item => {
+  // and calculate cumulative values
+  const chartData = data.chartData.map((item, index, array) => {
+    // Calculate cumulative value
+    let cumulativeValue = item.value;
+    if (showCumulative && index > 0) {
+      cumulativeValue = array.slice(0, index + 1).reduce((sum, curr) => sum + curr.value, 0);
+    }
+    
     // Make sure we have a target value for each data point
     return {
       ...item,
+      value: item.value,
+      cumulativeValue: cumulativeValue,
       target: data.target || null
     };
   });
   
+  // Format period labels based on time period
+  const formatPeriodLabel = (period) => {
+    if (timePeriod === 'monthly') {
+      const months = [
+        'January', 'February', 'March', 'April', 'May', 'June',
+        'July', 'August', 'September', 'October', 'November', 'December'
+      ];
+      return months[parseInt(period) - 1];
+    } else if (timePeriod === 'quarterly') {
+      return `Q${period}`;
+    } else if (timePeriod === 'yearly') {
+      return period;
+    } else if (timePeriod === 'weekly') {
+      return `Week ${period}`;
+    }
+    return period;
+  };
+  
   return (
     <Card elevation={2} sx={{ height: '100%' }}>
       <CardContent>
-        <Typography variant="h6" color="text.secondary" gutterBottom>
-          {metric.name}
-        </Typography>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+          <Typography variant="h6" color="text.secondary">
+            {metric.name}
+          </Typography>
+          <Button 
+            size="small" 
+            variant="outlined"
+            onClick={() => setShowCumulative(!showCumulative)}
+          >
+            {showCumulative ? 'Show Individual' : 'Show Cumulative'}
+          </Button>
+        </Box>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
           Current: {adapter.formatValue(metric.id, data.current)} | 
           Target: {data.target !== null ? adapter.formatValue(metric.id, data.target) : 'Not set'}
@@ -1052,6 +1091,7 @@ const LineChartCard = ({ metric, data, adapter }) => {
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis 
                 dataKey="name" 
+                tickFormatter={formatPeriodLabel}
                 label={{ 
                   value: 'Period', 
                   position: 'insideBottomRight', 
@@ -1067,13 +1107,13 @@ const LineChartCard = ({ metric, data, adapter }) => {
               />
               <Tooltip 
                 formatter={(value) => adapter.formatValue(metric.id, value)}
-                labelFormatter={(label) => `Period: ${label}`}
+                labelFormatter={(label) => `Period: ${formatPeriodLabel(label)}`}
               />
               <Legend />
               <Line
                 type="monotone"
-                dataKey="value"
-                name="Actual"
+                dataKey={showCumulative ? "cumulativeValue" : "value"}
+                name={showCumulative ? "Cumulative" : "Individual"}
                 stroke="#8884d8"
                 activeDot={{ r: 8 }}
                 strokeWidth={2}
