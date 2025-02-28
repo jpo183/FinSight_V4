@@ -227,15 +227,17 @@ const TemplateDashboard = ({
         };
         
         // Find manual values for this KPI
-        const kpiValues = storedKpiValues.filter(v => 
+        let kpiValues = storedKpiValues.filter(v => 
           v.kpi_id === kpiId && 
-          v.period_type === timePeriod &&
           v.year === selectedYear
         );
         
         // If we have manual values, use them
         if (kpiValues.length > 0) {
           console.log(`Found ${kpiValues.length} manual values for KPI ${kpiId}`);
+          
+          // Filter by period type
+          kpiValues = kpiValues.filter(v => v.period_type === timePeriod);
           
           // Convert to chart data format
           const chartData = kpiValues.map(v => ({
@@ -249,8 +251,83 @@ const TemplateDashboard = ({
           
           processedData[kpiId].chartData = chartData;
           
-          // Update current value to the most recent one
-          if (chartData.length > 0) {
+          // For specific period selection, filter to just that period
+          if (specificPeriod && timePeriod !== 'quarterly' && timePeriod !== 'yearly') {
+            const filteredChartData = chartData.filter(item => item.name === specificPeriod);
+            if (filteredChartData.length > 0) {
+              processedData[kpiId].current = filteredChartData[0].value;
+            }
+          } 
+          // For quarterly, aggregate monthly data
+          else if (timePeriod === 'quarterly') {
+            // Get all monthly data for this year
+            const monthlyData = storedKpiValues.filter(v => 
+              v.kpi_id === kpiId && 
+              v.period_type === 'monthly' &&
+              v.year === selectedYear
+            );
+            
+            // Group by quarter
+            const quarterlyData = {};
+            monthlyData.forEach(item => {
+              const month = parseInt(item.period_value);
+              const quarter = Math.ceil(month / 3);
+              if (!quarterlyData[quarter]) {
+                quarterlyData[quarter] = 0;
+              }
+              quarterlyData[quarter] += parseFloat(item.value);
+            });
+            
+            // Convert to chart data
+            const aggregatedChartData = Object.entries(quarterlyData).map(([quarter, value]) => ({
+              name: quarter,
+              value: value,
+              year: selectedYear
+            }));
+            
+            // Sort by quarter
+            aggregatedChartData.sort((a, b) => parseInt(a.name) - parseInt(b.name));
+            
+            processedData[kpiId].chartData = aggregatedChartData;
+            
+            // If specific quarter is selected, use that value
+            if (specificPeriod) {
+              const filteredQuarterData = aggregatedChartData.filter(item => item.name === specificPeriod);
+              if (filteredQuarterData.length > 0) {
+                processedData[kpiId].current = filteredQuarterData[0].value;
+              }
+            } else if (aggregatedChartData.length > 0) {
+              // Use the most recent quarter as current
+              processedData[kpiId].current = aggregatedChartData[aggregatedChartData.length - 1].value;
+            }
+          }
+          // For yearly, aggregate all monthly data
+          else if (timePeriod === 'yearly') {
+            // Get all monthly data for this year
+            const monthlyData = storedKpiValues.filter(v => 
+              v.kpi_id === kpiId && 
+              v.period_type === 'monthly' &&
+              v.year === selectedYear
+            );
+            
+            // Sum all values
+            let yearlyTotal = 0;
+            monthlyData.forEach(item => {
+              yearlyTotal += parseFloat(item.value);
+            });
+            
+            // Create yearly chart data
+            const yearlyChartData = [{
+              name: selectedYear,
+              value: yearlyTotal,
+              year: selectedYear
+            }];
+            
+            processedData[kpiId].chartData = yearlyChartData;
+            processedData[kpiId].current = yearlyTotal;
+          }
+          // Otherwise use the most recent value as current
+          else if (chartData.length > 0) {
             processedData[kpiId].current = chartData[chartData.length - 1].value;
           }
         } 
