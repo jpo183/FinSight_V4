@@ -228,16 +228,16 @@ const TemplateDashboard = ({
         weekly: {
           monthly: (week) => Math.ceil(parseInt(week) / 4),
           quarterly: (week) => Math.ceil(parseInt(week) / 13),
-          yearly: () => 1
+          yearly: () => selectedYear
         },
         // Map from monthly to other periods
         monthly: {
           quarterly: (month) => Math.ceil(parseInt(month) / 3),
-          yearly: () => 1
+          yearly: () => selectedYear
         },
         // Map from quarterly to yearly
         quarterly: {
-          yearly: () => 1
+          yearly: () => selectedYear
         }
       };
       
