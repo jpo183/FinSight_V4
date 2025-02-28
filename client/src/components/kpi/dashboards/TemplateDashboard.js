@@ -1000,18 +1000,33 @@ const BarChartCard = ({ metric, data, adapter }) => {
 const LineChartCard = ({ metric, data, adapter }) => {
   console.log('LineChartCard rendering with data:', data);
   
-  // Format the progress value safely
-  const formatProgress = (progress) => {
-    if (progress === null || progress === undefined) {
-      return 'No target set';
-    }
-    try {
-      return `${Math.round(progress)}%`;
-    } catch (error) {
-      console.error('Error formatting progress:', error);
-      return 'N/A';
-    }
-  };
+  // Check if we have chart data
+  if (!data.chartData || data.chartData.length === 0) {
+    console.warn('No chart data available for chart:', metric.id);
+    return (
+      <Card elevation={2} sx={{ height: '100%' }}>
+        <CardContent>
+          <Typography variant="h6" color="text.secondary" gutterBottom>
+            {metric.name}
+          </Typography>
+          <Box sx={{ height: 300, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Typography variant="body1" color="text.secondary">
+              No data available
+            </Typography>
+          </Box>
+        </CardContent>
+      </Card>
+    );
+  }
+  
+  // Prepare data for the chart - ensure we have both value and target
+  const chartData = data.chartData.map(item => {
+    // Make sure we have a target value for each data point
+    return {
+      ...item,
+      target: data.target || null
+    };
+  });
   
   return (
     <Card elevation={2} sx={{ height: '100%' }}>
@@ -1019,37 +1034,14 @@ const LineChartCard = ({ metric, data, adapter }) => {
         <Typography variant="h6" color="text.secondary" gutterBottom>
           {metric.name}
         </Typography>
-        <Typography variant="h4" component="div" sx={{ mb: 1 }}>
-          {adapter.formatValue(metric.id, data.current)}
-        </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          Current: {adapter.formatValue(metric.id, data.current)} | 
           Target: {data.target !== null ? adapter.formatValue(metric.id, data.target) : 'Not set'}
         </Typography>
-        <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-          <Box sx={{ width: '100%', mr: 1 }}>
-            <LinearProgress 
-              variant="determinate" 
-              value={data.progress !== null ? Math.min(data.progress, 100) : 0} 
-              color={data.status === 'positive' ? 'success' : data.status === 'negative' ? 'error' : 'primary'}
-            />
-          </Box>
-          <Box sx={{ minWidth: 35 }}>
-            <Typography variant="body2" color="text.secondary">
-              {(() => {
-                try {
-                  return formatProgress(data.progress);
-                } catch (e) {
-                  console.error('Error in formatProgress render:', e);
-                  return 'Error';
-                }
-              })()}
-            </Typography>
-          </Box>
-        </Box>
-        <Box sx={{ height: 200, mt: 2 }}>
+        <Box sx={{ height: 300 }}>
           <ResponsiveContainer width="100%" height="100%">
             <LineChart
-              data={data.chartData}
+              data={chartData}
               margin={{
                 top: 5,
                 right: 30,
@@ -1058,12 +1050,44 @@ const LineChartCard = ({ metric, data, adapter }) => {
               }}
             >
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="name" />
-              <YAxis />
-              <Tooltip formatter={(value) => adapter.formatValue(metric.id, value)} />
+              <XAxis 
+                dataKey="name" 
+                label={{ 
+                  value: 'Period', 
+                  position: 'insideBottomRight', 
+                  offset: -10 
+                }} 
+              />
+              <YAxis 
+                label={{ 
+                  value: metric.unit || '', 
+                  angle: -90, 
+                  position: 'insideLeft' 
+                }} 
+              />
+              <Tooltip 
+                formatter={(value) => adapter.formatValue(metric.id, value)}
+                labelFormatter={(label) => `Period: ${label}`}
+              />
               <Legend />
-              <Line type="monotone" dataKey="value" stroke="#8884d8" name="Actual" />
-              <Line type="monotone" dataKey="target" stroke="#82ca9d" name="Target" />
+              <Line
+                type="monotone"
+                dataKey="value"
+                name="Actual"
+                stroke="#8884d8"
+                activeDot={{ r: 8 }}
+                strokeWidth={2}
+              />
+              {data.target !== null && (
+                <Line
+                  type="monotone"
+                  dataKey="target"
+                  name="Target"
+                  stroke="#82ca9d"
+                  strokeDasharray="5 5"
+                  strokeWidth={2}
+                />
+              )}
             </LineChart>
           </ResponsiveContainer>
         </Box>
