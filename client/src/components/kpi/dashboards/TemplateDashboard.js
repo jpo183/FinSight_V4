@@ -1000,6 +1000,9 @@ const BarChartCard = ({ metric, data, adapter }) => {
 const LineChartCard = ({ metric, data, adapter }) => {
   console.log('LineChartCard rendering with data:', data);
   
+  // State to toggle between cumulative and regular view
+  const [showCumulative, setShowCumulative] = useState(true);
+  
   // Check if we have chart data
   if (!data.chartData || data.chartData.length === 0) {
     console.warn('No chart data available for chart:', metric.id);
@@ -1019,9 +1022,6 @@ const LineChartCard = ({ metric, data, adapter }) => {
     );
   }
   
-  // State to toggle between cumulative and regular view
-  const [showCumulative, setShowCumulative] = useState(true);
-  
   // Prepare data for the chart - ensure we have both value and target
   // and calculate cumulative values
   const chartData = data.chartData.map((item, index, array) => {
@@ -1040,19 +1040,23 @@ const LineChartCard = ({ metric, data, adapter }) => {
     };
   });
   
-  // Format period labels based on time period
+  // Format period labels based on period type
   const formatPeriodLabel = (period) => {
-    if (timePeriod === 'monthly') {
+    // Get period type from the first data point if available
+    const periodType = data.periodType || 'monthly';
+    
+    if (periodType === 'monthly') {
       const months = [
         'January', 'February', 'March', 'April', 'May', 'June',
         'July', 'August', 'September', 'October', 'November', 'December'
       ];
-      return months[parseInt(period) - 1];
-    } else if (timePeriod === 'quarterly') {
+      const monthIndex = parseInt(period) - 1;
+      return monthIndex >= 0 && monthIndex < months.length ? months[monthIndex] : period;
+    } else if (periodType === 'quarterly') {
       return `Q${period}`;
-    } else if (timePeriod === 'yearly') {
+    } else if (periodType === 'yearly') {
       return period;
-    } else if (timePeriod === 'weekly') {
+    } else if (periodType === 'weekly') {
       return `Week ${period}`;
     }
     return period;
