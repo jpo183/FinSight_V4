@@ -202,16 +202,19 @@ const TemplateDashboard = ({
       const storedValues = localStorage.getItem('salesKpiValues');
       if (storedValues) {
         storedKpiValues = JSON.parse(storedValues);
-        console.log('Processing stored KPI values:', storedKpiValues);
+        console.log('📊 Processing stored KPI values:', storedKpiValues);
       }
     } catch (error) {
-      console.error('Error parsing stored KPI values:', error);
+      console.error('❌ Error parsing stored KPI values:', error);
     }
     
     // Helper function to aggregate data from one period type to another
     const aggregateData = (values, fromType, toType) => {
+      console.log(`🔄 Aggregating data from ${fromType} to ${toType}`, values);
+      
       // If we're already at the target period type, just return the values
       if (fromType === toType) {
+        console.log(`🔄 Same period type (${fromType}), no aggregation needed`);
         return values.map(v => ({
           name: v.period_value,
           value: parseFloat(v.value),
@@ -240,7 +243,7 @@ const TemplateDashboard = ({
       
       // Check if we have a mapping for this conversion
       if (!periodMappings[fromType] || !periodMappings[fromType][toType]) {
-        console.warn(`No mapping from ${fromType} to ${toType}`);
+        console.warn(`❌ No mapping from ${fromType} to ${toType}`);
         return [];
       }
       
@@ -248,28 +251,37 @@ const TemplateDashboard = ({
       const groupedData = {};
       values.forEach(item => {
         const targetPeriod = periodMappings[fromType][toType](item.period_value);
+        console.log(`🔄 Mapping ${fromType} ${item.period_value} to ${toType} ${targetPeriod}`);
+        
         if (!groupedData[targetPeriod]) {
           groupedData[targetPeriod] = 0;
         }
         groupedData[targetPeriod] += parseFloat(item.value);
       });
       
+      console.log(`🔄 Grouped data after aggregation:`, groupedData);
+      
       // Convert to chart data format
-      return Object.entries(groupedData).map(([period, value]) => ({
+      const result = Object.entries(groupedData).map(([period, value]) => ({
         name: period.toString(),
         value: value,
         year: values[0].year
       }));
+      
+      console.log(`🔄 Final aggregated data:`, result);
+      return result;
     };
     
     // Process each KPI
     Object.entries(data).forEach(([kpiId, kpiData]) => {
       if (!kpiData) {
-        console.warn(`No data for KPI: ${kpiId}`);
+        console.warn(`❌ No data for KPI: ${kpiId}`);
         return;
       }
       
       try {
+        console.log(`📊 Processing KPI ${kpiId} for period ${timePeriod}`);
+        
         // Start with a safe copy of the KPI data
         processedData[kpiId] = {
           ...kpiData,
@@ -288,12 +300,14 @@ const TemplateDashboard = ({
         );
         
         if (allKpiValues.length > 0) {
-          console.log(`Found ${allKpiValues.length} manual values for KPI ${kpiId}`);
+          console.log(`📊 Found ${allKpiValues.length} manual values for KPI ${kpiId} in year ${selectedYear}`);
           
           // First try to find values of the exact period type we want
           const exactPeriodValues = allKpiValues.filter(v => v.period_type === timePeriod);
           
           if (exactPeriodValues.length > 0) {
+            console.log(`📊 Found ${exactPeriodValues.length} values of exact period type ${timePeriod}`);
+            
             // We have values of the exact period type
             const chartData = exactPeriodValues.map(v => ({
               name: v.period_value,
@@ -305,22 +319,29 @@ const TemplateDashboard = ({
             chartData.sort((a, b) => parseInt(a.name) - parseInt(b.name));
             
             processedData[kpiId].chartData = chartData;
+            console.log(`📊 Using exact period data for chart:`, chartData);
             
             // For specific period selection, filter to just that period
             if (specificPeriod) {
               const filteredData = chartData.filter(item => item.name === specificPeriod);
               if (filteredData.length > 0) {
                 processedData[kpiId].current = filteredData[0].value;
+                console.log(`📊 Using specific period ${specificPeriod} value: ${filteredData[0].value}`);
               }
             } else if (chartData.length > 0) {
               // Use the most recent period as current
               processedData[kpiId].current = chartData[chartData.length - 1].value;
+              console.log(`📊 Using most recent period value: ${chartData[chartData.length - 1].value}`);
             }
           } else {
+            console.log(`📊 No exact period values found for ${timePeriod}, will try to aggregate`);
+            
             // We need to aggregate from smaller periods
             // Try in order: weekly -> monthly -> quarterly -> yearly
             const periodHierarchy = ['weekly', 'monthly', 'quarterly', 'yearly'];
             const targetPeriodIndex = periodHierarchy.indexOf(timePeriod);
+            
+            console.log(`📊 Target period index: ${targetPeriodIndex} for ${timePeriod}`);
             
             // Find the smallest period type that has data
             let sourceData = null;
@@ -330,14 +351,19 @@ const TemplateDashboard = ({
               const periodType = periodHierarchy[i];
               const periodValues = allKpiValues.filter(v => v.period_type === periodType);
               
+              console.log(`📊 Checking for ${periodType} data: found ${periodValues.length} values`);
+              
               if (periodValues.length > 0) {
                 sourceData = periodValues;
                 sourcePeriodType = periodType;
+                console.log(`📊 Will use ${periodType} data for aggregation`);
                 break;
               }
             }
             
             if (sourceData) {
+              console.log(`📊 Aggregating from ${sourcePeriodType} to ${timePeriod}`);
+              
               // Aggregate the data to the target period
               const chartData = aggregateData(sourceData, sourcePeriodType, timePeriod);
               
@@ -345,24 +371,32 @@ const TemplateDashboard = ({
               chartData.sort((a, b) => parseInt(a.name) - parseInt(b.name));
               
               processedData[kpiId].chartData = chartData;
+              console.log(`📊 Final chart data after aggregation:`, chartData);
               
               // For specific period selection, filter to just that period
               if (specificPeriod) {
                 const filteredData = chartData.filter(item => item.name === specificPeriod);
                 if (filteredData.length > 0) {
                   processedData[kpiId].current = filteredData[0].value;
+                  console.log(`📊 Using specific aggregated period ${specificPeriod} value: ${filteredData[0].value}`);
                 }
               } else if (chartData.length > 0) {
                 // Use the most recent period as current
                 processedData[kpiId].current = chartData[chartData.length - 1].value;
+                console.log(`📊 Using most recent aggregated period value: ${chartData[chartData.length - 1].value}`);
               }
+            } else {
+              console.log(`❌ No suitable source data found for aggregation to ${timePeriod}`);
             }
           }
+        } else {
+          console.log(`📊 No manual values found for KPI ${kpiId} in year ${selectedYear}`);
         }
         
         // Get target from goals if available
         if (goalsByKpi[kpiId]) {
           processedData[kpiId].target = parseFloat(goalsByKpi[kpiId].target_value);
+          console.log(`📊 Using target from goals: ${processedData[kpiId].target}`);
         }
         
         // Recalculate progress if we have both current and target
@@ -379,9 +413,11 @@ const TemplateDashboard = ({
           } else {
             processedData[kpiId].status = 'negative';
           }
+          
+          console.log(`📊 Calculated progress: ${processedData[kpiId].progress}%, status: ${processedData[kpiId].status}`);
         }
       } catch (error) {
-        console.error(`Error processing data for KPI ${kpiId}:`, error);
+        console.error(`❌ Error processing data for KPI ${kpiId}:`, error);
         // Provide fallback data
         processedData[kpiId] = {
           ...kpiData,
@@ -989,14 +1025,14 @@ const BarChartCard = ({ metric, data, adapter }) => {
 
 // Line Chart Card Component
 const LineChartCard = ({ metric, data, adapter }) => {
-  console.log('LineChartCard rendering with data:', data);
+  console.log('📈 LineChartCard rendering with data:', data);
   
   // State to toggle between cumulative and regular view
   const [showCumulative, setShowCumulative] = useState(true);
   
   // Check if we have chart data
   if (!data.chartData || data.chartData.length === 0) {
-    console.warn('No chart data available for chart:', metric.id);
+    console.warn('❌ No chart data available for chart:', metric.id);
     return (
       <Card elevation={2} sx={{ height: '100%' }}>
         <CardContent>
@@ -1023,18 +1059,23 @@ const LineChartCard = ({ metric, data, adapter }) => {
     }
     
     // Make sure we have a target value for each data point
-    return {
+    const result = {
       ...item,
       value: item.value,
       cumulativeValue: cumulativeValue,
       target: data.target || null
     };
+    
+    return result;
   });
+  
+  console.log('📈 Prepared chart data with cumulative values:', chartData);
   
   // Format period labels based on period type
   const formatPeriodLabel = (period) => {
-    // Get period type from the first data point if available
+    // Get period type from the data
     const periodType = data.periodType || 'monthly';
+    console.log(`📈 Formatting period ${period} for type ${periodType}`);
     
     if (periodType === 'monthly') {
       const months = [
