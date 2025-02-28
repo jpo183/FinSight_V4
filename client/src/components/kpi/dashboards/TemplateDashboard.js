@@ -67,6 +67,9 @@ const TemplateDashboard = ({
   // Error state
   const [error, setError] = useState(null);
   
+  // Add this new state for year
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString());
+  
   // Load KPI definitions and entities
   useEffect(() => {
     try {
@@ -102,6 +105,12 @@ const TemplateDashboard = ({
         });
         setGoalsByKpi(goalsMap);
       }
+      
+      // Add this to debug KPI values
+      const storedValues = localStorage.getItem('salesKpiValues');
+      if (storedValues) {
+        console.log('Found stored KPI values:', JSON.parse(storedValues));
+      }
     } catch (err) {
       console.error("Error in useEffect:", err);
       setError(err);
@@ -133,6 +142,11 @@ const TemplateDashboard = ({
     setSpecificPeriod(event.target.value);
   };
   
+  // Add this new handler for year changes
+  const handleYearChange = (event) => {
+    setSelectedYear(event.target.value);
+  };
+  
   // Get time period options based on selected period type
   const getTimePeriodOptions = () => {
     if (timePeriod === 'weekly') {
@@ -162,6 +176,15 @@ const TemplateDashboard = ({
       }));
     }
     return [];
+  };
+  
+  // Add this function to get year options
+  const getYearOptions = () => {
+    const currentYear = new Date().getFullYear();
+    return Array.from({ length: 11 }, (_, i) => ({
+      value: (currentYear - 5 + i).toString(),
+      label: (currentYear - 5 + i).toString()
+    }));
   };
   
   // Process data based on selected time period
@@ -206,6 +229,10 @@ const TemplateDashboard = ({
             }
           }
         }
+        
+        // When filtering data, include the year
+        // This will depend on how your adapter processes data, but generally:
+        const filteredData = domainAdapter.getFilteredData(timePeriod, specificPeriod, selectedYear);
         
         // Create a safe copy of the KPI data
         processedData[kpiId] = {
@@ -563,6 +590,35 @@ const TemplateDashboard = ({
             </Grid>
           </Grid>
         </Paper>
+        
+        {/* In the filter controls section, add the year dropdown */}
+        <Box sx={{ mb: 3 }}>
+          <Paper sx={{ p: 2 }}>
+            <Grid container spacing={2} alignItems="center">
+              {/* ... existing time period controls ... */}
+              
+              {/* Add this new Grid item for year selection */}
+              <Grid item xs={12} sm={6} md={3}>
+                <FormControl fullWidth size="small">
+                  <InputLabel id="year-label">Year</InputLabel>
+                  <Select
+                    labelId="year-label"
+                    id="year-select"
+                    value={selectedYear}
+                    label="Year"
+                    onChange={handleYearChange}
+                  >
+                    {getYearOptions().map((option) => (
+                      <MenuItem key={option.value} value={option.value}>
+                        {option.label}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+            </Grid>
+          </Paper>
+        </Box>
       </Box>
       
       {/* Dashboard Sections */}
