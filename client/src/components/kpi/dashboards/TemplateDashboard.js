@@ -208,6 +208,60 @@ const TemplateDashboard = ({
       console.error('Error parsing stored KPI values:', error);
     }
     
+    // Helper function to aggregate data from one period type to another
+    const aggregateData = (values, fromType, toType) => {
+      // If we're already at the target period type, just return the values
+      if (fromType === toType) {
+        return values.map(v => ({
+          name: v.period_value,
+          value: parseFloat(v.value),
+          year: v.year
+        }));
+      }
+      
+      // Define period mappings
+      const periodMappings = {
+        // Map from weekly to other periods
+        weekly: {
+          monthly: (week) => Math.ceil(parseInt(week) / 4),
+          quarterly: (week) => Math.ceil(parseInt(week) / 13),
+          yearly: () => 1
+        },
+        // Map from monthly to other periods
+        monthly: {
+          quarterly: (month) => Math.ceil(parseInt(month) / 3),
+          yearly: () => 1
+        },
+        // Map from quarterly to yearly
+        quarterly: {
+          yearly: () => 1
+        }
+      };
+      
+      // Check if we have a mapping for this conversion
+      if (!periodMappings[fromType] || !periodMappings[fromType][toType]) {
+        console.warn(`No mapping from ${fromType} to ${toType}`);
+        return [];
+      }
+      
+      // Group values by the target period
+      const groupedData = {};
+      values.forEach(item => {
+        const targetPeriod = periodMappings[fromType][toType](item.period_value);
+        if (!groupedData[targetPeriod]) {
+          groupedData[targetPeriod] = 0;
+        }
+        groupedData[targetPeriod] += parseFloat(item.value);
+      });
+      
+      // Convert to chart data format
+      return Object.entries(groupedData).map(([period, value]) => ({
+        name: period.toString(),
+        value: value,
+        year: values[0].year
+      }));
+    };
+    
     // Process each KPI
     Object.entries(data).forEach(([kpiId, kpiData]) => {
       if (!kpiData) {
@@ -227,241 +281,83 @@ const TemplateDashboard = ({
           periodType: timePeriod // Store the current period type
         };
         
-        // Find all values for this KPI across all period types
+        // Find all values for this KPI for the selected year
         const allKpiValues = storedKpiValues.filter(v => 
           v.kpi_id === kpiId && 
           v.year === selectedYear
         );
         
-        // If we have manual values, use them
         if (allKpiValues.length > 0) {
           console.log(`Found ${allKpiValues.length} manual values for KPI ${kpiId}`);
           
-          // Process based on selected time period
-          if (timePeriod === 'weekly') {
-            // Filter weekly values
-            const weeklyValues = allKpiValues.filter(v => v.period_type === 'weekly');
+          // First try to find values of the exact period type we want
+          const exactPeriodValues = allKpiValues.filter(v => v.period_type === timePeriod);
+          
+          if (exactPeriodValues.length > 0) {
+            // We have values of the exact period type
+            const chartData = exactPeriodValues.map(v => ({
+              name: v.period_value,
+              value: parseFloat(v.value),
+              year: v.year
+            }));
             
-            if (weeklyValues.length > 0) {
-              // Convert to chart data format
-              const chartData = weeklyValues.map(v => ({
-                name: v.period_value,
-                value: parseFloat(v.value),
-                year: v.year
-              }));
+            // Sort by period value
+            chartData.sort((a, b) => parseInt(a.name) - parseInt(b.name));
+            
+            processedData[kpiId].chartData = chartData;
+            
+            // For specific period selection, filter to just that period
+            if (specificPeriod) {
+              const filteredData = chartData.filter(item => item.name === specificPeriod);
+              if (filteredData.length > 0) {
+                processedData[kpiId].current = filteredData[0].value;
+              }
+            } else if (chartData.length > 0) {
+              // Use the most recent period as current
+              processedData[kpiId].current = chartData[chartData.length - 1].value;
+            }
+          } else {
+            // We need to aggregate from smaller periods
+            // Try in order: weekly -> monthly -> quarterly -> yearly
+            const periodHierarchy = ['weekly', 'monthly', 'quarterly', 'yearly'];
+            const targetPeriodIndex = periodHierarchy.indexOf(timePeriod);
+            
+            // Find the smallest period type that has data
+            let sourceData = null;
+            let sourcePeriodType = null;
+            
+            for (let i = 0; i < targetPeriodIndex; i++) {
+              const periodType = periodHierarchy[i];
+              const periodValues = allKpiValues.filter(v => v.period_type === periodType);
               
-              // Sort by week number
+              if (periodValues.length > 0) {
+                sourceData = periodValues;
+                sourcePeriodType = periodType;
+                break;
+              }
+            }
+            
+            if (sourceData) {
+              // Aggregate the data to the target period
+              const chartData = aggregateData(sourceData, sourcePeriodType, timePeriod);
+              
+              // Sort by period value
               chartData.sort((a, b) => parseInt(a.name) - parseInt(b.name));
               
               processedData[kpiId].chartData = chartData;
               
-              // For specific week selection, filter to just that week
+              // For specific period selection, filter to just that period
               if (specificPeriod) {
-                const filteredChartData = chartData.filter(item => item.name === specificPeriod);
-                if (filteredChartData.length > 0) {
-                  processedData[kpiId].current = filteredChartData[0].value;
+                const filteredData = chartData.filter(item => item.name === specificPeriod);
+                if (filteredData.length > 0) {
+                  processedData[kpiId].current = filteredData[0].value;
                 }
               } else if (chartData.length > 0) {
-                // Use the most recent week as current
+                // Use the most recent period as current
                 processedData[kpiId].current = chartData[chartData.length - 1].value;
               }
             }
-          } 
-          else if (timePeriod === 'monthly') {
-            // Filter monthly values
-            const monthlyValues = allKpiValues.filter(v => v.period_type === 'monthly');
-            
-            if (monthlyValues.length > 0) {
-              // Convert to chart data format
-              const chartData = monthlyValues.map(v => ({
-                name: v.period_value,
-                value: parseFloat(v.value),
-                year: v.year
-              }));
-              
-              // Sort by month number
-              chartData.sort((a, b) => parseInt(a.name) - parseInt(b.name));
-              
-              processedData[kpiId].chartData = chartData;
-              
-              // For specific month selection, filter to just that month
-              if (specificPeriod) {
-                const filteredChartData = chartData.filter(item => item.name === specificPeriod);
-                if (filteredChartData.length > 0) {
-                  processedData[kpiId].current = filteredChartData[0].value;
-                }
-              } else if (chartData.length > 0) {
-                // Use the most recent month as current
-                processedData[kpiId].current = chartData[chartData.length - 1].value;
-              }
-            }
-          } 
-          else if (timePeriod === 'quarterly') {
-            // Get all monthly data for this year to aggregate into quarters
-            const monthlyValues = allKpiValues.filter(v => v.period_type === 'monthly');
-            
-            if (monthlyValues.length > 0) {
-              // Group by quarter
-              const quarterlyData = {};
-              monthlyValues.forEach(item => {
-                const month = parseInt(item.period_value);
-                const quarter = Math.ceil(month / 3);
-                if (!quarterlyData[quarter]) {
-                  quarterlyData[quarter] = 0;
-                }
-                quarterlyData[quarter] += parseFloat(item.value);
-              });
-              
-              // Convert to chart data
-              const chartData = Object.entries(quarterlyData).map(([quarter, value]) => ({
-                name: quarter,
-                value: value,
-                year: selectedYear
-              }));
-              
-              // Sort by quarter
-              chartData.sort((a, b) => parseInt(a.name) - parseInt(b.name));
-              
-              processedData[kpiId].chartData = chartData;
-              
-              // If specific quarter is selected, use that value
-              if (specificPeriod) {
-                const filteredQuarterData = chartData.filter(item => item.name === specificPeriod);
-                if (filteredQuarterData.length > 0) {
-                  processedData[kpiId].current = filteredQuarterData[0].value;
-                }
-              } else if (chartData.length > 0) {
-                // Use the most recent quarter as current
-                processedData[kpiId].current = chartData[chartData.length - 1].value;
-              }
-            }
-            
-            // Also check for direct quarterly values
-            const quarterlyValues = allKpiValues.filter(v => v.period_type === 'quarterly');
-            if (quarterlyValues.length > 0) {
-              // Convert to chart data format
-              const directQuarterlyData = quarterlyValues.map(v => ({
-                name: v.period_value,
-                value: parseFloat(v.value),
-                year: v.year
-              }));
-              
-              // Sort by quarter
-              directQuarterlyData.sort((a, b) => parseInt(a.name) - parseInt(b.name));
-              
-              // If we have direct quarterly data, use it instead of aggregated
-              processedData[kpiId].chartData = directQuarterlyData;
-              
-              // For specific quarter selection, filter to just that quarter
-              if (specificPeriod) {
-                const filteredChartData = directQuarterlyData.filter(item => item.name === specificPeriod);
-                if (filteredChartData.length > 0) {
-                  processedData[kpiId].current = filteredChartData[0].value;
-                }
-              } else if (directQuarterlyData.length > 0) {
-                // Use the most recent quarter as current
-                processedData[kpiId].current = directQuarterlyData[directQuarterlyData.length - 1].value;
-              }
-            }
-          } 
-          else if (timePeriod === 'yearly') {
-            // Check for direct yearly values first
-            const yearlyValues = allKpiValues.filter(v => v.period_type === 'yearly');
-            
-            if (yearlyValues.length > 0) {
-              // Convert to chart data format
-              const chartData = yearlyValues.map(v => ({
-                name: v.period_value,
-                value: parseFloat(v.value),
-                year: v.year
-              }));
-              
-              processedData[kpiId].chartData = chartData;
-              processedData[kpiId].current = chartData[0].value;
-            } 
-            else {
-              // Aggregate from monthly data if available
-              const monthlyValues = allKpiValues.filter(v => v.period_type === 'monthly');
-              
-              if (monthlyValues.length > 0) {
-                // Sum all monthly values
-                let yearlyTotal = 0;
-                monthlyValues.forEach(item => {
-                  yearlyTotal += parseFloat(item.value);
-                });
-                
-                // Create yearly chart data
-                const yearlyChartData = [{
-                  name: selectedYear,
-                  value: yearlyTotal,
-                  year: selectedYear
-                }];
-                
-                processedData[kpiId].chartData = yearlyChartData;
-                processedData[kpiId].current = yearlyTotal;
-              }
-              // If no monthly data, try quarterly
-              else {
-                const quarterlyValues = allKpiValues.filter(v => v.period_type === 'quarterly');
-                
-                if (quarterlyValues.length > 0) {
-                  // Sum all quarterly values
-                  let yearlyTotal = 0;
-                  quarterlyValues.forEach(item => {
-                    yearlyTotal += parseFloat(item.value);
-                  });
-                  
-                  // Create yearly chart data
-                  const yearlyChartData = [{
-                    name: selectedYear,
-                    value: yearlyTotal,
-                    year: selectedYear
-                  }];
-                  
-                  processedData[kpiId].chartData = yearlyChartData;
-                  processedData[kpiId].current = yearlyTotal;
-                }
-              }
-            }
           }
-        } 
-        // Otherwise use the built-in data
-        else {
-          let dataSource = [];
-          
-          // Select the right data array based on time period
-          if (timePeriod === 'weekly' && kpiData.weeklyData) {
-            dataSource = [...kpiData.weeklyData];
-          } else if (timePeriod === 'monthly' && kpiData.monthlyData) {
-            dataSource = [...kpiData.monthlyData];
-          } else if (timePeriod === 'quarterly' && kpiData.quarterlyData) {
-            dataSource = [...kpiData.quarterlyData];
-          } else if (timePeriod === 'yearly' && kpiData.yearlyData) {
-            dataSource = [...kpiData.yearlyData];
-          } else if (kpiData.chartData) {
-            dataSource = [...kpiData.chartData];
-          }
-          
-          // Filter by year if applicable
-          if (selectedYear && dataSource.length > 0) {
-            dataSource = dataSource.filter(item => 
-              item && (!item.year || item.year === selectedYear)
-            );
-          }
-          
-          // Filter by specific period if selected
-          if (specificPeriod && dataSource.length > 0) {
-            if (timePeriod === 'yearly') {
-              dataSource = dataSource.filter(item => item && item.name === specificPeriod);
-            } else {
-              const periodIndex = parseInt(specificPeriod, 10) - 1;
-              if (periodIndex >= 0 && periodIndex < dataSource.length) {
-                dataSource = [dataSource[periodIndex]];
-              }
-            }
-          }
-          
-          processedData[kpiId].chartData = dataSource;
         }
         
         // Get target from goals if available
