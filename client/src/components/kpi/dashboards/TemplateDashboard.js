@@ -230,9 +230,37 @@ const TemplateDashboard = ({
           }
         }
         
-        // When filtering data, include the year
-        // This will depend on how your adapter processes data, but generally:
-        const filteredData = domainAdapter.getFilteredData(timePeriod, specificPeriod, selectedYear);
+        // Filter by year if applicable
+        if (selectedYear && filteredData.length > 0) {
+          filteredData = filteredData.filter(item => 
+            item && (!item.year || item.year === selectedYear)
+          );
+        }
+        
+        // Check if we should load manual KPI values from localStorage
+        const storedValues = localStorage.getItem('salesKpiValues');
+        if (storedValues) {
+          const values = JSON.parse(storedValues);
+          const kpiValues = values.filter(v => 
+            v.kpi_id === kpiId && 
+            v.period_type === timePeriod &&
+            v.year === selectedYear
+          );
+          
+          if (kpiValues.length > 0) {
+            // Convert to chart data format
+            const chartData = kpiValues.map(v => ({
+              name: v.period_value,
+              value: parseFloat(v.value),
+              year: v.year
+            }));
+            
+            // Sort by period value
+            chartData.sort((a, b) => parseInt(a.name) - parseInt(b.name));
+            
+            filteredData = chartData;
+          }
+        }
         
         // Create a safe copy of the KPI data
         processedData[kpiId] = {
