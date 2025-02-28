@@ -129,32 +129,33 @@ const KpiValuesPage = () => {
   };
 
   // Format period for display
-  const formatPeriod = (type, value, year) => {
-    switch (type) {
+  const formatPeriod = (periodType, periodValue, year) => {
+    switch (periodType) {
       case 'weekly':
-        return `Week ${value}, ${year}`;
+        return `Week ${periodValue}, ${year}`;
       case 'monthly':
         const monthNames = [
           'January', 'February', 'March', 'April', 'May', 'June',
           'July', 'August', 'September', 'October', 'November', 'December'
         ];
-        return `${monthNames[parseInt(value) - 1]} ${year}`;
+        const monthIndex = parseInt(periodValue, 10) - 1;
+        return `${monthNames[monthIndex]} ${year}`;
       case 'quarterly':
-        return `Q${value} ${year}`;
+        return `Q${periodValue} ${year}`;
       case 'yearly':
         return year;
       default:
-        return '';
+        return `${periodType} ${periodValue}, ${year}`;
     }
   };
 
-  // Get KPI name from ID
+  // Get KPI name by ID
   const getKpiName = (kpiId) => {
     const kpi = kpiDefinitions.find(k => k.id === kpiId);
     return kpi ? kpi.name : 'Unknown KPI';
   };
 
-  // Get KPI unit from ID
+  // Get KPI unit by ID
   const getKpiUnit = (kpiId) => {
     const kpi = kpiDefinitions.find(k => k.id === kpiId);
     return kpi ? kpi.unit : '';
@@ -164,78 +165,58 @@ const KpiValuesPage = () => {
   const handleSubmit = (e) => {
     e.preventDefault();
     
-    if (!selectedKpi || !periodType || !periodValue || !year || value === '') {
-      setNotification({
-        open: true,
-        message: 'Please fill in all required fields',
-        severity: 'error'
-      });
-      return;
-    }
-    
     try {
-      // Create a copy of the values array
-      const updatedValues = [...kpiValues];
+      // Validate form
+      if (!selectedKpi || !periodType || !periodValue || !year || value === '') {
+        setNotification({
+          open: true,
+          message: 'Please fill in all required fields',
+          severity: 'error'
+        });
+        return;
+      }
       
-      // Create a unique ID for the period
-      const periodId = `${selectedKpi}-${periodType}-${periodValue}-${year}`;
+      // Create new KPI value object
+      const newValue = {
+        id: editingValueId || Date.now().toString(),
+        kpi_id: selectedKpi,
+        period_type: periodType,
+        period_value: periodValue,
+        year: year,
+        value: parseFloat(value),
+        notes: notes,
+        created_at: editingValueId ? undefined : new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
       
+      // Check for duplicates (same KPI, period type, period value, and year)
+      const isDuplicate = kpiValues.some(v => 
+        v.kpi_id === newValue.kpi_id && 
+        v.period_type === newValue.period_type && 
+        v.period_value === newValue.period_value && 
+        v.year === newValue.year && 
+        v.id !== newValue.id
+      );
+      
+      if (isDuplicate) {
+        setNotification({
+          open: true,
+          message: 'A value for this KPI and period already exists',
+          severity: 'error'
+        });
+        return;
+      }
+      
+      // Update or add the value
+      let updatedValues;
       if (editingValueId) {
-        // Editing existing value
-        const index = updatedValues.findIndex(v => v.id === editingValueId);
-        if (index !== -1) {
-          updatedValues[index] = {
-            ...updatedValues[index],
-            kpi_id: selectedKpi,
-            period_type: periodType,
-            period_value: periodValue,
-            year: year,
-            value: value,
-            notes: notes,
-            updated_at: new Date().toISOString()
-          };
-        }
-        setNotification({
-          open: true,
-          message: 'KPI value updated successfully',
-          severity: 'success'
-        });
-      } else {
-        // Check for duplicate entries
-        const existingValue = kpiValues.find(v => 
-          v.kpi_id === selectedKpi && 
-          v.period_type === periodType && 
-          v.period_value === periodValue && 
-          v.year === year
+        // Update existing value
+        updatedValues = kpiValues.map(v => 
+          v.id === editingValueId ? newValue : v
         );
-        
-        if (existingValue) {
-          setNotification({
-            open: true,
-            message: 'A value for this KPI and period already exists. Edit the existing value instead.',
-            severity: 'error'
-          });
-          return;
-        }
-        
-        // Creating new value
-        const newValue = {
-          id: Date.now().toString(),
-          kpi_id: selectedKpi,
-          period_type: periodType,
-          period_value: periodValue,
-          year: year,
-          value: value,
-          notes: notes,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        };
-        updatedValues.push(newValue);
-        setNotification({
-          open: true,
-          message: 'KPI value added successfully',
-          severity: 'success'
-        });
+      } else {
+        // Add new value
+        updatedValues = [...kpiValues, newValue];
       }
       
       // Save to localStorage
@@ -246,6 +227,12 @@ const KpiValuesPage = () => {
       
       // Reset form
       resetForm();
+      
+      setNotification({
+        open: true,
+        message: editingValueId ? 'KPI value updated successfully' : 'KPI value added successfully',
+        severity: 'success'
+      });
     } catch (error) {
       console.error('Error saving KPI value:', error);
       setNotification({
@@ -264,7 +251,7 @@ const KpiValuesPage = () => {
       setPeriodType(valueToEdit.period_type);
       setPeriodValue(valueToEdit.period_value);
       setYear(valueToEdit.year);
-      setValue(valueToEdit.value);
+      setValue(valueToEdit.value.toString());
       setNotes(valueToEdit.notes || '');
       setEditingValueId(valueId);
     }
@@ -416,14 +403,14 @@ const KpiValuesPage = () => {
                     type="number"
                     value={value}
                     onChange={(e) => setValue(e.target.value)}
-                    required
                     InputProps={{
                       endAdornment: selectedKpi && (
                         <InputAdornment position="end">
                           {getKpiUnit(selectedKpi)}
                         </InputAdornment>
-                      )
+                      ),
                     }}
+                    required
                   />
                   
                   <TextField
